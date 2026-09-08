@@ -3,4 +3,4 @@ Esperimento di vibecode online
 
 ## Development status
 
-Il progetto è in fase iniziale.
+Il progetto è attualmente in fase iniziale di sviluppo.
