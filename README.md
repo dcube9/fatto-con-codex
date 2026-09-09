@@ -12,8 +12,6 @@ abbonamenti, accessi, pagamenti, utenti demo e gestione demo.
 ViteKlub viene eseguita interamente nel browser e non utilizza un backend. I dati demo
 saranno conservati localmente e non saranno condivisi tra browser o dispositivi. Consulta
 [`docs/architecture/overview.md`](docs/architecture/overview.md) per i dettagli e i limiti.
-Il [modello dati](docs/architecture/data-model.md) documenta il seed JSON fittizio e le
-regole con cui viene validato.
 
 ## Prerequisiti
 
