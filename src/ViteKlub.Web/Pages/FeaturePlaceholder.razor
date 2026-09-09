@@ -1,0 +1,27 @@
+@page "/members"
+@page "/memberships"
+@page "/accesses"
+@page "/payments"
+@page "/demo-users"
+@page "/demo"
+@inject NavigationManager Navigation
+
+<PageTitle>@Title - ViteKlub</PageTitle>
+
+<h1 class="mud-typography mud-typography-h3">@Title</h1>
+<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+    Questa area verrà implementata in un prossimo incremento.
+</MudAlert>
+
+@code {
+    private string Title => Navigation.ToBaseRelativePath(Navigation.Uri) switch
+    {
+        "members" => "Iscritti",
+        "memberships" => "Abbonamenti",
+        "accesses" => "Accessi",
+        "payments" => "Pagamenti",
+        "demo-users" => "Utenti demo",
+        "demo" => "Gestione demo",
+        _ => "ViteKlub"
+    };
+}
