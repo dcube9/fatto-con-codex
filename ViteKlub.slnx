@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ViteKlub.Core/ViteKlub.Core.csproj" />
+    <Project Path="src/ViteKlub.Web/ViteKlub.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ViteKlub.Core.Tests/ViteKlub.Core.Tests.csproj" />
+  </Folder>
+</Solution>
