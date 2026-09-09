@@ -1,0 +1,73 @@
+@page "/"
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Dashboard - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Dashboard</h1>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">
+            Panoramica operativa della palestra ViteKlub.
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Caricamento dataset demo" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_errorMessage</MudAlert>
+    }
+    else if (_snapshot is not null)
+    {
+        <MudAlert Severity="@StorageSeverity" Variant="Variant.Outlined">
+            @_snapshot.Dataset.Members.Count iscritti caricati.
+            @StorageDescription
+        </MudAlert>
+    }
+
+    <MudGrid>
+        @foreach (var area in DemoEnvironment.FunctionalAreas.Skip(1))
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4" Outlined="true">
+                    <MudText Typo="Typo.h6">@area</MudText>
+                    <MudText Typo="Typo.body2">Funzionalità predisposta per i prossimi incrementi.</MudText>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+</MudStack>
+
+@code {
+    private DemoDatasetSnapshot? _snapshot;
+    private string? _errorMessage;
+    private bool _loading = true;
+
+    private Severity StorageSeverity => _snapshot?.StorageMode == DemoStorageMode.IndexedDb
+        ? Severity.Success
+        : Severity.Warning;
+
+    private string StorageDescription => _snapshot?.StorageMode == DemoStorageMode.IndexedDb
+        ? "Le modifiche resteranno in questo browser."
+        : "IndexedDB non è disponibile: le modifiche dureranno solo fino alla chiusura della scheda.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _snapshot = await DatasetStore.GetAsync();
+        }
+        catch (Exception exception) when (exception is HttpRequestException
+            or InvalidDataException
+            or System.Text.Json.JsonException)
+        {
+            _errorMessage = "Impossibile inizializzare il dataset demo. Ricarica la pagina per riprovare.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
