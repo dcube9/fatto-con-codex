@@ -4,7 +4,7 @@ public static class DemoEnvironment
 {
     public const string ApplicationName = "ViteKlub";
 
-    public static readonly string[] FunctionalAreas =
+    public static IReadOnlyList<string> FunctionalAreas { get; } = Array.AsReadOnly<string>(
     [
         "Dashboard",
         "Iscritti",
@@ -13,5 +13,5 @@ public static class DemoEnvironment
         "Pagamenti",
         "Utenti demo",
         "Gestione demo"
-    ];
+    ]);
 }

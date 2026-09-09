@@ -6,7 +6,7 @@ namespace ViteKlub.Core.Tests;
 public sealed class DemoEnvironmentTests
 {
     [Fact]
-    public void FunctionalAreas_ContainOnlyApprovedScope()
+    public void FunctionalAreasContainOnlyApprovedScope()
     {
         string[] expectedAreas =
         [
@@ -19,6 +19,6 @@ public sealed class DemoEnvironmentTests
             "Gestione demo"
         ];
 
-        Assert.Equal(expectedAreas, DemoEnvironment.FunctionalAreas);
+        Assert.Equal(expectedAreas, DemoEnvironment.FunctionalAreas.ToArray());
     }
 }
