@@ -13,9 +13,4 @@
   <ItemGroup>
     <ProjectReference Include="../../src/ViteKlub.Core/ViteKlub.Core.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="../../src/ViteKlub.Web/wwwroot/data/initial-dataset.json"
-          Link="Data/initial-dataset.json"
-          CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 </Project>
