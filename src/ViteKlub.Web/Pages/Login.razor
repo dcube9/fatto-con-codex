@@ -1,0 +1,127 @@
+@page "/login"
+@layout Layout.LoginLayout
+@inject IDemoAuthenticationService Authentication
+@inject NavigationManager Navigation
+
+<PageTitle>Accedi - ViteKlub</PageTitle>
+
+<MudStack Spacing="4" AlignItems="AlignItems.Center">
+    <div class="login-heading">
+        <h1 class="mud-typography mud-typography-h2 brand-title">ViteKlub</h1>
+        <h2 class="mud-typography mud-typography-h4">Scegli un profilo demo</h2>
+        <MudText Typo="Typo.body1">
+            L'accesso simula ruoli e permessi dell'interfaccia. Non è un'autenticazione reale.
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" aria-label="Caricamento profili demo" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_errorMessage</MudAlert>
+    }
+    else
+    {
+        <MudGrid Justify="Justify.Center" Class="login-profiles">
+            @foreach (DemoUser user in _profiles)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudCard Outlined="true" Class="profile-card">
+                        <MudCardContent>
+                            <MudAvatar Color="@RoleColor(user.Role)" Size="Size.Large" Class="mb-3">
+                                @GetInitials(user.DisplayName)
+                            </MudAvatar>
+                            <MudText Typo="Typo.h6">@user.DisplayName</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@RoleColor(user.Role)" Class="my-2">
+                                @RoleLabel(user.Role)
+                            </MudChip>
+                            <MudText Typo="Typo.body2">@RoleDescription(user.Role)</MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary"
+                                       Disabled="_submitting" OnClick="@(() => LoginAsync(user.Id))">
+                                Entra come @user.DisplayName
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudStack>
+
+@code {
+    private IReadOnlyList<DemoUser> _profiles = [];
+    private string? _errorMessage;
+    private bool _loading = true;
+    private bool _submitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _profiles = await Authentication.GetProfilesAsync();
+        }
+        catch (Exception exception) when (exception is HttpRequestException
+            or InvalidDataException
+            or System.Text.Json.JsonException)
+        {
+            _errorMessage = "Impossibile caricare i profili demo. Ricarica la pagina per riprovare.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoginAsync(Guid userId)
+    {
+        _submitting = true;
+        bool success = await Authentication.LoginAsync(userId);
+        if (success)
+        {
+            Navigation.NavigateTo("");
+            return;
+        }
+
+        _errorMessage = "Il profilo selezionato non è più disponibile.";
+        _submitting = false;
+    }
+
+    private static string GetInitials(string displayName)
+    {
+        return string.Concat(displayName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0])));
+    }
+
+    private static string RoleLabel(DemoRole role) => role switch
+    {
+        DemoRole.Administrator => "Amministratore",
+        DemoRole.Manager => "Manager",
+        DemoRole.Receptionist => "Reception",
+        DemoRole.Viewer => "Visualizzatore",
+        _ => role.ToString()
+    };
+
+    private static string RoleDescription(DemoRole role) => role switch
+    {
+        DemoRole.Administrator => "Accesso completo, inclusi utenti e gestione della demo.",
+        DemoRole.Manager => "Gestione operativa e consultazione dei pagamenti.",
+        DemoRole.Receptionist => "Gestione quotidiana di iscritti, abbonamenti e accessi.",
+        DemoRole.Viewer => "Consultazione in sola lettura delle aree non riservate.",
+        _ => string.Empty
+    };
+
+    private static Color RoleColor(DemoRole role) => role switch
+    {
+        DemoRole.Administrator => Color.Error,
+        DemoRole.Manager => Color.Primary,
+        DemoRole.Receptionist => Color.Secondary,
+        DemoRole.Viewer => Color.Info,
+        _ => Color.Default
+    };
+}
