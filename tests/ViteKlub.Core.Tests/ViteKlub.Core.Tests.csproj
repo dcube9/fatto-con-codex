@@ -13,8 +13,4 @@
   <ItemGroup>
     <ProjectReference Include="../../src/ViteKlub.Core/ViteKlub.Core.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="../../src/ViteKlub.Web/wwwroot/data/initial-dataset.json"
-                      LogicalName="ViteKlub.Core.Tests.Data.initial-dataset.json" />
-  </ItemGroup>
 </Project>
