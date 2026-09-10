@@ -1,0 +1,72 @@
+@page "/"
+@using System.Text.Json
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Dashboard - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Dashboard</h1>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">
+            Panoramica operativa della palestra ViteKlub.
+        </MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_errorMessage</MudAlert>
+    }
+    else if (_snapshot is not null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            @_snapshot.Dataset.Members.Count iscritti caricati. Archiviazione:
+            <strong>@GetStorageLabel(_snapshot.StorageMode)</strong>.
+            I dati restano esclusivamente nel browser corrente.
+        </MudAlert>
+    }
+
+    <MudGrid>
+        @foreach (var area in DemoEnvironment.FunctionalAreas.Skip(1))
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4" Outlined="true">
+                    <MudText Typo="Typo.h6">@area</MudText>
+                    <MudText Typo="Typo.body2">Funzionalità predisposta per i prossimi incrementi.</MudText>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+</MudStack>
+
+@code {
+    private DemoDatasetSnapshot? _snapshot;
+    private string? _errorMessage;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _snapshot = await DatasetStore.GetAsync();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or InvalidDataException or JsonException)
+        {
+            _errorMessage = "Impossibile caricare i dati demo. Ricarica la pagina per riprovare.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string GetStorageLabel(DemoStorageMode storageMode) => storageMode switch
+    {
+        DemoStorageMode.IndexedDb => "IndexedDB",
+        DemoStorageMode.Memory => "memoria temporanea",
+        _ => throw new ArgumentOutOfRangeException(nameof(storageMode)),
+    };
+}

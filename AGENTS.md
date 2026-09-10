@@ -6,19 +6,34 @@ Il branch `main` è protetto e rappresenta il codice stabile del progetto.
 
 Non lavorare direttamente su `main`.
 
-Per ogni attività:
+Per una nuova attività di implementazione:
 
 1. Parti dalla versione aggiornata di `main`.
 2. Crea un branch dedicato all'attività.
 3. Esegui tutte le modifiche esclusivamente nel branch dedicato.
 4. Esegui i test e le verifiche disponibili.
 5. Crea commit chiari e logicamente separati.
-6. Pubblica il branch su GitHub.
-7. Crea una Pull Request verso `main`.
-8. Non effettuare autonomamente il merge della Pull Request.
-9. Non eseguire push direttamente su `main`.
-10. Non utilizzare `force push` su `main`.
-11. Non aggirare branch protection, ruleset o altri controlli GitHub.
+
+Per proseguire un'attività esistente, continua sul branch già associato all'attività senza
+crearne uno nuovo a ogni messaggio.
+
+Nel flusso Codex Cloud di questo progetto, Codex prepara le modifiche, i commit, le
+verifiche e il titolo e la descrizione della Pull Request. La pubblicazione del lavoro e
+la creazione della Pull Request vengono avviate dall'utente tramite **Create PR**
+nell'interfaccia.
+
+L'agente:
+
+* non deve eseguire `git push` dal terminale né usare altri comandi o API per sostituire
+  il passaggio **Create PR**;
+* non deve configurare token, password, chiavi SSH o credential helper per aggirare
+  errori di autenticazione;
+* deve distinguere chiaramente il lavoro presente nel container da quello effettivamente
+  pubblicato su GitHub;
+* non deve dichiarare che una Pull Request esiste senza averne conferma;
+* non deve eseguire push direttamente su `main`, effettuare merge, attivare auto-merge o
+  modificare branch protection, ruleset o altri controlli GitHub;
+* non deve utilizzare force push su `main`.
 
 ## Branch naming
 
@@ -43,6 +58,11 @@ Esempi:
 ## Pull Requests
 
 Ogni modifica destinata a `main` deve essere presentata tramite Pull Request.
+
+Codex prepara titolo e descrizione della Pull Request; nel flusso Codex Cloud la
+pubblicazione e la creazione effettiva della Pull Request spettano all'utente tramite
+**Create PR**. Finché questo passaggio non è confermato, la Pull Request è soltanto
+proposta e non deve essere presentata come esistente su GitHub.
 
 La Pull Request deve indicare almeno:
 
