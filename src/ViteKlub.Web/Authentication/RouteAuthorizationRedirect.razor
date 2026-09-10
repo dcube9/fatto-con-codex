@@ -1,0 +1,22 @@
+@inject NavigationManager Navigation
+
+<MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Reindirizzamento" />
+
+@code {
+    [Parameter, EditorRequired]
+    public AuthenticationState AuthenticationState { get; set; } = default!;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        string currentPath = '/' + Navigation.ToBaseRelativePath(Navigation.Uri);
+        string destination = AuthenticationState.User.Identity?.IsAuthenticated == true
+            ? $"access-denied?returnUrl={Uri.EscapeDataString(currentPath)}"
+            : $"login?returnUrl={Uri.EscapeDataString(currentPath)}";
+        Navigation.NavigateTo(destination, replace: true);
+    }
+}
