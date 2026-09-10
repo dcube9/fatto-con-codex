@@ -6,19 +6,32 @@ Il branch `main` è protetto e rappresenta il codice stabile del progetto.
 
 Non lavorare direttamente su `main`.
 
-Per ogni attività:
+Per una nuova attività:
 
 1. Parti dalla versione aggiornata di `main`.
 2. Crea un branch dedicato all'attività.
 3. Esegui tutte le modifiche esclusivamente nel branch dedicato.
 4. Esegui i test e le verifiche disponibili.
 5. Crea commit chiari e logicamente separati.
-6. Pubblica il branch su GitHub.
-7. Crea una Pull Request verso `main`.
-8. Non effettuare autonomamente il merge della Pull Request.
-9. Non eseguire push direttamente su `main`.
-10. Non utilizzare `force push` su `main`.
-11. Non aggirare branch protection, ruleset o altri controlli GitHub.
+6. Prepara un titolo e una descrizione per la Pull Request verso `main`.
+
+Quando un'attività esistente viene ripresa, continua a lavorare sul branch già dedicato
+all'attività senza crearne un altro e senza ripartire da branch locali appartenenti ad
+altri task.
+
+Codex prepara le modifiche, i commit, le verifiche e il titolo e la descrizione proposti
+per la Pull Request. La pubblicazione del branch e la creazione della Pull Request sono
+invece avviate dall'utente esclusivamente tramite **Create PR**.
+
+Codex non deve:
+
+* eseguire `git push` dal terminale;
+* usare API, CLI GitHub o comandi alternativi per pubblicare il branch o creare la Pull
+  Request al posto di **Create PR**;
+* configurare access token, password, chiavi SSH o credential helper;
+* eseguire push direttamente su `main` o utilizzare force push;
+* effettuare merge o auto-merge di una Pull Request;
+* modificare o aggirare branch protection, ruleset o altri controlli GitHub.
 
 ## Branch naming
 
@@ -56,6 +69,11 @@ La Pull Request deve indicare almeno:
 * problemi ancora aperti.
 
 Non dichiarare un test come superato se non è stato realmente eseguito.
+
+Nel riepilogo finale distingui chiaramente il lavoro completato localmente, come commit e
+verifiche, da ciò che è stato effettivamente pubblicato su GitHub. Non dichiarare che un
+branch è stato pubblicato o che una Pull Request esiste senza una conferma esplicita del
+relativo esito.
 
 ## Safety
 

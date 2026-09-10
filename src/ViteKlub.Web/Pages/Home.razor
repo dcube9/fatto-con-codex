@@ -1,4 +1,5 @@
 @page "/"
+@inject IDemoDatasetStore DatasetStore
 
 <PageTitle>Dashboard - ViteKlub</PageTitle>
 
@@ -10,11 +11,25 @@
         </MudText>
     </div>
 
-    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
-        I dati di questa demo saranno memorizzati esclusivamente nel browser corrente.
-    </MudAlert>
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Caricamento dataset" />
+        <MudText role="status">Caricamento dei dati demo…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            @_errorMessage
+        </MudAlert>
+    }
+    else if (_snapshot is not null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            Dataset @_snapshot.Dataset.DatasetVersion caricato: @_snapshot.Dataset.Members.Count iscritti.
+            Persistenza: @StorageModeLabel.
+        </MudAlert>
 
-    <MudGrid>
+        <MudGrid>
         @foreach (var area in DemoEnvironment.FunctionalAreas.Skip(1))
         {
             <MudItem xs="12" sm="6" md="4">
@@ -24,5 +39,32 @@
                 </MudPaper>
             </MudItem>
         }
-    </MudGrid>
+        </MudGrid>
+    }
 </MudStack>
+
+@code {
+    private bool _isLoading = true;
+    private DemoDatasetSnapshot? _snapshot;
+    private string? _errorMessage;
+
+    private string StorageModeLabel => _snapshot?.StorageMode == DemoStorageMode.IndexedDb
+        ? "IndexedDB"
+        : "memoria temporanea";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _snapshot = await DatasetStore.LoadAsync();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare i dati demo. Ricarica la pagina per riprovare.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
