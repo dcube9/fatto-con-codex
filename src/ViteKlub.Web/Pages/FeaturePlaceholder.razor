@@ -4,6 +4,7 @@
 @page "/payments"
 @page "/demo-users"
 @page "/demo"
+@attribute [Authorize]
 @inject NavigationManager Navigation
 
 <PageTitle>@Title - ViteKlub</PageTitle>
@@ -14,6 +15,9 @@
 </MudAlert>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
     private string Title => Navigation.ToBaseRelativePath(Navigation.Uri) switch
     {
         "members" => "Iscritti",
@@ -24,4 +28,14 @@
         "demo" => "Gestione demo",
         _ => "ViteKlub"
     };
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationStateTask;
+        string path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (!DemoNavigation.IsAuthorized(path, state.User))
+        {
+            Navigation.NavigateTo($"access-denied?returnUrl={Uri.EscapeDataString('/' + path)}", replace: true);
+        }
+    }
 }
