@@ -36,4 +36,11 @@ public static class DemoNavigation
         DemoNavigationItem? item = Items.SingleOrDefault(item => item.Href == normalizedPath);
         return item?.IsAuthorized(user) ?? false;
     }
+
+    public static string GetSafeReturnUrl(string? returnUrl) =>
+        !string.IsNullOrWhiteSpace(returnUrl) &&
+        returnUrl[0] == '/' &&
+        (returnUrl.Length == 1 || returnUrl[1] is not ('/' or '\\'))
+            ? returnUrl[1..]
+            : string.Empty;
 }

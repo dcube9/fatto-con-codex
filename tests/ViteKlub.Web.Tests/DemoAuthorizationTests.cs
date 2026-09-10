@@ -44,6 +44,20 @@ public sealed class DemoAuthorizationTests
         Assert.False(DemoNavigation.IsAuthorized("not-a-route", CreatePrincipal(DemoRoles.Administrator)));
     }
 
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    [InlineData("/", "")]
+    [InlineData("/members", "members")]
+    [InlineData("/members?active=true", "members?active=true")]
+    [InlineData("//example.com", "")]
+    [InlineData("/\\example.com", "")]
+    [InlineData("https://example.com", "")]
+    public void ReturnUrlIsSafeAndRelativeToTheApplicationBase(string? returnUrl, string expected)
+    {
+        Assert.Equal(expected, DemoNavigation.GetSafeReturnUrl(returnUrl));
+    }
+
     private static ClaimsPrincipal CreatePrincipal(string role) =>
         new(new ClaimsIdentity([new Claim(ClaimTypes.Role, role)], "Test"));
 }

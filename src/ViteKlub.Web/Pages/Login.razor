@@ -75,12 +75,7 @@
             return;
         }
 
-        string destination = GetSafeReturnUrl(ReturnUrl);
+        string destination = DemoNavigation.GetSafeReturnUrl(ReturnUrl);
         Navigation.NavigateTo(destination, replace: true);
     }
-
-    internal static string GetSafeReturnUrl(string? returnUrl) =>
-        !string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//")
-            ? returnUrl
-            : "/";
 }
