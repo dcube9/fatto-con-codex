@@ -33,5 +33,13 @@ dotnet test ViteKlub.slnx --configuration Release --no-build
 dotnet format ViteKlub.slnx --verify-no-changes --no-restore
 ```
 
+## Deploy su GitHub Pages
+
+Ogni push su `main` avvia la pipeline CI e, soltanto dopo il superamento di build e test,
+pubblica l'applicazione statica su GitHub Pages. Il repository deve avere **GitHub
+Actions** selezionato come sorgente in **Settings → Pages**. Consulta
+[`docs/deployment/github-pages.md`](docs/deployment/github-pages.md) per configurazione,
+flusso e limitazioni.
+
 > ViteKlub è esclusivamente una demo: autenticazione e ruoli sono simulati e non devono
 > essere utilizzati dati personali, credenziali o informazioni finanziarie reali.

@@ -1,0 +1,10 @@
+@page "/access-denied"
+@attribute [Authorize(Roles = DemoRoles.All)]
+
+<PageTitle>Accesso negato - ViteKlub</PageTitle>
+
+<h1 class="mud-typography mud-typography-h3">Accesso negato</h1>
+<MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-4">
+    Il profilo demo corrente non dispone del ruolo richiesto per questa area.
+</MudAlert>
+<MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">Torna alla dashboard</MudButton>

@@ -14,6 +14,13 @@
         <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
             Ambiente demo
         </MudChip>
+        <AuthorizeView>
+            <Authorized Context="auth">
+                <MudText Class="ml-3" Typo="Typo.body2">@auth.User.Identity?.Name</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
+                               OnClick="LogoutAsync" aria-label="Esci dalla sessione demo" />
+            </Authorized>
+        </AuthorizeView>
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen" Elevation="1" Variant="DrawerVariant.Responsive">
@@ -31,7 +38,19 @@
 </MudLayout>
 
 @code {
+    [Inject]
+    private IDemoAuthenticationService AuthenticationService { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
     private bool _drawerOpen = true;
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task LogoutAsync()
+    {
+        await AuthenticationService.LogoutAsync();
+        Navigation.NavigateTo("login", replace: true);
+    }
 }
