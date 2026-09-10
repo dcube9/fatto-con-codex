@@ -1,13 +1,22 @@
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <LayoutView Layout="@typeof(Layout.MainLayout)">
-            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
-                La pagina richiesta non esiste.
-            </MudAlert>
-        </LayoutView>
-    </NotFound>
-</Router>
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="@typeof(Layout.MainLayout)">
+                <Authorizing>
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Ripristino sessione" />
+                </Authorizing>
+                <NotAuthorized Context="authenticationState">
+                    <RouteAuthorizationRedirect AuthenticationState="authenticationState" />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(Layout.MainLayout)">
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                    La pagina richiesta non esiste.
+                </MudAlert>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

@@ -1,0 +1,86 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@inject IDemoAuthenticationService AuthenticationService
+@inject NavigationManager Navigation
+
+<PageTitle>Accesso demo - ViteKlub</PageTitle>
+
+<MudGrid Justify="Justify.Center" Class="mt-8">
+    <MudItem xs="12" sm="9" md="6" lg="5">
+        <MudPaper Class="pa-6" Elevation="2">
+            <MudStack Spacing="3">
+                <div>
+                    <h1 class="mud-typography mud-typography-h4">Accesso dimostrativo</h1>
+                    <MudText Typo="Typo.body1">Seleziona uno dei profili presenti nel dataset demo.</MudText>
+                </div>
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                    Questa autenticazione avviene solo nel browser, non richiede password e non è sicura né adatta alla produzione.
+                </MudAlert>
+                @if (_isLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" aria-label="Caricamento profili demo" />
+                }
+                else
+                {
+                    <MudSelect T="Guid?" Label="Profilo demo" @bind-Value="_selectedUserId" Variant="Variant.Outlined">
+                        @foreach (DemoUser user in _users)
+                        {
+                            <MudSelectItem T="Guid?" Value="@((Guid?)user.Id)">@user.DisplayName — @user.Role</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_selectedUserId is null || _isSubmitting)"
+                               OnClick="LoginAsync" FullWidth="true">
+                        Entra nella demo
+                    </MudButton>
+                }
+                @if (_errorMessage is not null)
+                {
+                    <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private IReadOnlyList<DemoUser> _users = [];
+    private Guid? _selectedUserId;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await AuthenticationService.GetAvailableUsersAsync();
+        _selectedUserId = _users.FirstOrDefault()?.Id;
+        _isLoading = false;
+    }
+
+    private async Task LoginAsync()
+    {
+        if (_selectedUserId is not Guid userId)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        bool success = await AuthenticationService.LoginAsync(userId);
+        if (!success)
+        {
+            _errorMessage = "Il profilo selezionato non è più disponibile.";
+            _isSubmitting = false;
+            return;
+        }
+
+        string destination = GetSafeReturnUrl(ReturnUrl);
+        Navigation.NavigateTo(destination, replace: true);
+    }
+
+    internal static string GetSafeReturnUrl(string? returnUrl) =>
+        !string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//")
+            ? returnUrl
+            : "/";
+}
