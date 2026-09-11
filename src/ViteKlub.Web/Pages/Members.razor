@@ -1,0 +1,168 @@
+@page "/members"
+@attribute [Authorize(Roles = DemoRoles.All)]
+@inject IDemoDatasetStore DatasetStore
+@inject NavigationManager Navigation
+
+<PageTitle>Iscritti - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Iscritti</h1>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">
+            Consulta l’elenco degli iscritti demo e lo stato del loro certificato medico.
+        </MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Caricamento iscritti" />
+        <MudText role="status" aria-live="polite">Caricamento degli iscritti…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_members.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Il dataset demo non contiene iscritti.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="Cerca iscritti" Value="_search"
+                                  ValueChanged="SearchChanged" Placeholder="Numero tessera, nome o cognome"
+                                  Immediate="true" Clearable="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="MemberStatus?" Label="Stato" Value="_status" ValueChanged="StatusChanged">
+                        <MudSelectItem T="MemberStatus?" Value="@(null)">Tutti</MudSelectItem>
+                        <MudSelectItem T="MemberStatus?" Value="@MemberStatus.Active">Attivo</MudSelectItem>
+                        <MudSelectItem T="MemberStatus?" Value="@MemberStatus.Suspended">Sospeso</MudSelectItem>
+                        <MudSelectItem T="MemberStatus?" Value="@MemberStatus.Archived">Archiviato</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="MemberSortField" Label="Ordina per" Value="_sortBy" ValueChanged="SortChanged">
+                        <MudSelectItem Value="MemberSortField.MemberNumber">Numero tessera</MudSelectItem>
+                        <MudSelectItem Value="MemberSortField.Name">Cognome e nome</MudSelectItem>
+                        <MudSelectItem Value="MemberSortField.JoinedOn">Data di iscrizione</MudSelectItem>
+                        <MudSelectItem Value="MemberSortField.MedicalCertificateExpiresOn">Scadenza certificato</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@DirectionIcon" OnClick="ToggleDirection"
+                                       aria-label="@DirectionLabel" />
+                        <MudButton Variant="Variant.Text" OnClick="ResetFilters">Azzera filtri</MudButton>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudText role="status" aria-live="polite">@ResultCountLabel</MudText>
+
+        @if (_result.TotalCount == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                Nessun iscritto corrisponde alla ricerca e ai filtri selezionati.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_result.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+                      aria-label="Elenco iscritti">
+                <HeaderContent>
+                    <MudTh>Numero tessera</MudTh>
+                    <MudTh>Nome e cognome</MudTh>
+                    <MudTh>Stato</MudTh>
+                    <MudTh>Iscrizione</MudTh>
+                    <MudTh>Certificato medico</MudTh>
+                    <MudTh>Dettaglio</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Numero tessera">@context.MemberNumber</MudTd>
+                    <MudTd DataLabel="Nome e cognome">@context.FirstName @context.LastName</MudTd>
+                    <MudTd DataLabel="Stato"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@MemberDirectory.MemberStatusLabel(context.Status)</MudChip></MudTd>
+                    <MudTd DataLabel="Iscrizione">@FormatDate(context.JoinedOn)</MudTd>
+                    <MudTd DataLabel="Certificato medico">
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body2">@FormatDate(context.MedicalCertificateExpiresOn)</MudText>
+                            <MudText Typo="Typo.caption">@CertificateLabel(context)</MudText>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Dettaglio">
+                        <MudButton Variant="Variant.Text" Href="@($"members/{context.Id:D}")"
+                                   aria-label="@($"Apri il dettaglio di {context.FirstName} {context.LastName}")">
+                            Visualizza
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            @if (_result.PageCount > 1)
+            {
+                <MudPagination Count="_result.PageCount" Selected="_page" SelectedChanged="PageChanged"
+                               aria-label="Paginazione iscritti" />
+            }
+        }
+    }
+</MudStack>
+
+@code {
+    private const int PageSize = 10;
+    private readonly DateOnly _referenceDate = DateOnly.FromDateTime(DateTime.Today);
+    private IReadOnlyList<Member> _members = [];
+    private MemberDirectoryResult _result = new([], 0, 1, PageSize);
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _search;
+    private MemberStatus? _status;
+    private MemberSortField _sortBy = MemberSortField.MemberNumber;
+    private MemberSortDirection _direction = MemberSortDirection.Ascending;
+    private int _page = 1;
+
+    private string DirectionIcon => _direction == MemberSortDirection.Ascending
+        ? Icons.Material.Filled.ArrowUpward
+        : Icons.Material.Filled.ArrowDownward;
+    private string DirectionLabel => _direction == MemberSortDirection.Ascending
+        ? "Ordinamento crescente; passa a decrescente"
+        : "Ordinamento decrescente; passa a crescente";
+    private string ResultCountLabel => _result.TotalCount == 1
+        ? "1 iscritto trovato"
+        : $"{_result.TotalCount} iscritti trovati";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            DemoDatasetSnapshot snapshot = await DatasetStore.LoadAsync();
+            _members = snapshot.Dataset.Members;
+            ApplyQuery();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare gli iscritti. Ricarica la pagina per riprovare.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyQuery() => _result = MemberDirectory.Query(
+        _members,
+        new(_search, _status, _sortBy, _direction, _page, PageSize));
+
+    private void SearchChanged(string? value) { _search = value; _page = 1; ApplyQuery(); }
+    private void StatusChanged(MemberStatus? value) { _status = value; _page = 1; ApplyQuery(); }
+    private void SortChanged(MemberSortField value) { _sortBy = value; _page = 1; ApplyQuery(); }
+    private void ToggleDirection() { _direction = _direction == MemberSortDirection.Ascending ? MemberSortDirection.Descending : MemberSortDirection.Ascending; _page = 1; ApplyQuery(); }
+    private void PageChanged(int value) { _page = value; ApplyQuery(); }
+    private void ResetFilters() { _search = null; _status = null; _page = 1; ApplyQuery(); }
+    private static string FormatDate(DateOnly date) => date.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.GetCultureInfo("it-IT"));
+    private static string FormatDate(DateOnly? date) => date is null ? "Non presente" : FormatDate(date.Value);
+    private string CertificateLabel(Member member) => MemberDirectory.CertificateStateLabel(
+        MemberDirectory.ClassifyCertificate(member.MedicalCertificateExpiresOn, _referenceDate));
+}
