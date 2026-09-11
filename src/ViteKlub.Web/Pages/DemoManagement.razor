@@ -1,0 +1,137 @@
+@page "/demo"
+@attribute [Authorize(Roles = DemoRoles.Administration)]
+@inject IDemoDatasetStore DatasetStore
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Gestione demo - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Gestione demo</h1>
+        <MudText Color="Color.Secondary">Consulta e ripristina il dataset dimostrativo locale.</MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento dataset demo" />
+        <MudText role="status" aria-live="polite">Caricamento delle informazioni del dataset…</MudText>
+    }
+    else if (_loadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_loadError</MudAlert>
+    }
+    else if (_snapshot is not null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            Tutti i dati sono fittizi, restano locali a questo browser e non sono sincronizzati con altri dispositivi.
+        </MudAlert>
+
+        @if (_snapshot.StorageMode == DemoStorageMode.InMemory)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                IndexedDB non è disponibile: le modifiche e il ripristino sono temporanei e non sopravvivono al reload.
+            </MudAlert>
+        }
+
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudText Typo="Typo.h5" GutterBottom="true">Informazioni tecniche</MudText>
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="3"><MudText Typo="Typo.overline">Versione dataset</MudText><MudText>@_snapshot.Dataset.DatasetVersion</MudText></MudItem>
+                <MudItem xs="12" sm="6" md="3"><MudText Typo="Typo.overline">Versione schema</MudText><MudText>@_snapshot.Dataset.SchemaVersion</MudText></MudItem>
+                <MudItem xs="12" sm="6" md="3"><MudText Typo="Typo.overline">Data di riferimento</MudText><MudText>@_snapshot.Dataset.ReferenceDate.ToString("dd/MM/yyyy")</MudText></MudItem>
+                <MudItem xs="12" sm="6" md="3"><MudText Typo="Typo.overline">Persistenza effettiva</MudText><MudText>@StorageModeLabel</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudText Typo="Typo.h5" GutterBottom="true">Contenuto del dataset</MudText>
+            <MudGrid>
+                @foreach (DemoDatasetCollectionCount collection in _snapshot.CollectionCounts)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.overline">@collection.Label</MudText>
+                        <MudText Typo="Typo.h5">@collection.Count</MudText>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudText Typo="Typo.h5">Ripristino</MudText>
+            <MudText Class="mb-3">Sostituisce tutte le modifiche locali con il seed iniziale distribuito con l'applicazione.</MudText>
+            @if (_isRestoring)
+            {
+                <MudProgressLinear Indeterminate="true" aria-label="Ripristino dataset in corso" />
+                <MudText role="status" aria-live="polite">Ripristino e salvataggio del dataset in corso…</MudText>
+            }
+            <MudButton Color="Color.Error" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Restore"
+                       Disabled="_isRestoring" OnClick="ConfirmRestoreAsync">
+                Ripristina dataset
+            </MudButton>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    private DemoDatasetSnapshot? _snapshot;
+    private bool _isLoading = true;
+    private bool _isRestoring;
+    private string? _loadError;
+
+    private string StorageModeLabel => _snapshot?.StorageMode == DemoStorageMode.IndexedDb
+        ? "IndexedDB"
+        : "memoria temporanea";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _snapshot = await DatasetStore.LoadAsync();
+        }
+        catch (Exception)
+        {
+            _loadError = "Non è stato possibile caricare le informazioni del dataset demo. Ricarica la pagina per riprovare.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ConfirmRestoreAsync()
+    {
+        if (_isRestoring)
+        {
+            return;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Ripristina dataset demo",
+            "Il dataset locale sarà sostituito con il seed iniziale. L'operazione non può essere annullata.",
+            yesText: "Ripristina dataset",
+            cancelText: "Annulla");
+        if (confirmed != true || _isRestoring)
+        {
+            return;
+        }
+
+        _isRestoring = true;
+        try
+        {
+            _snapshot = await DatasetStore.RestoreInitialDatasetAsync();
+            string message = _snapshot.StorageMode == DemoStorageMode.IndexedDb
+                ? "Dataset demo ripristinato e salvato in IndexedDB."
+                : "Dataset demo ripristinato in memoria temporanea; il ripristino non sopravvivrà al reload.";
+            Snackbar.Add(message, Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Non è stato possibile ripristinare il dataset. Il dataset locale precedente non è stato sostituito.", Severity.Error);
+        }
+        finally
+        {
+            _isRestoring = false;
+        }
+    }
+}

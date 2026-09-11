@@ -46,6 +46,22 @@ public sealed class BrowserDemoDatasetStore(HttpClient httpClient, IJSRuntime js
         }
     }
 
+    public async Task<DemoDatasetSnapshot> RestoreInitialDatasetAsync(
+        CancellationToken cancellationToken = default)
+    {
+        string seedJson = await httpClient.GetStringAsync(SeedPath, cancellationToken);
+        DemoDataset seedDataset = DeserializeAndValidate(seedJson);
+
+        if (inMemoryDataset is not null)
+        {
+            inMemoryDataset = seedDataset;
+            return new(seedDataset, DemoStorageMode.InMemory);
+        }
+
+        await jsRuntime.InvokeVoidAsync("demoStorage.save", cancellationToken, seedJson);
+        return new(seedDataset, DemoStorageMode.IndexedDb);
+    }
+
     private async Task<DemoDatasetSnapshot> LoadSeedInMemoryAsync(CancellationToken cancellationToken)
     {
         string seedJson = await httpClient.GetStringAsync(SeedPath, cancellationToken);

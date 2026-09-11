@@ -14,6 +14,6 @@ public sealed class ApplicationVersionTests
             .InformationalVersion;
 
         Assert.Equal($"v{informationalVersion.Split('+', 2)[0]}", ApplicationVersion.Display);
-        Assert.Equal("v0.2.0", ApplicationVersion.Display);
+        Assert.Equal("v0.3.0", ApplicationVersion.Display);
     }
 }
