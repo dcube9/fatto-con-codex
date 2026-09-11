@@ -14,6 +14,13 @@ body {
     font-size: 1.125rem;
 }
 
+.app-version {
+    margin-left: 0.25rem;
+    font-size: 0.75em;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
 #blazor-error-ui {
     display: none;
     position: fixed;

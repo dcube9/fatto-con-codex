@@ -33,6 +33,13 @@ dotnet test ViteKlub.slnx --configuration Release --no-build
 dotnet format ViteKlub.slnx --verify-no-changes --no-restore
 ```
 
+## Versione dell'applicazione
+
+La versione segue il versionamento semantico ed è definita una sola volta nella proprietà
+`VersionPrefix` di `Directory.Build.props`. La stessa versione viene inclusa negli assembly
+e mostrata nell'intestazione dell'applicazione accanto al nome ViteKlub. Per preparare una
+release, aggiorna `VersionPrefix` in base al tipo di modifica prima di creare il commit.
+
 ## Deploy su GitHub Pages
 
 Ogni push su `main` avvia la pipeline CI e, soltanto dopo il superamento di build e test,
