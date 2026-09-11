@@ -1,0 +1,122 @@
+@page "/members/new"
+@page "/members/{Id:guid}/edit"
+@attribute [Authorize(Roles = DemoRoles.MemberManagement)]
+@inject IDemoDatasetStore DatasetStore
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>@(IsNew ? "Nuovo iscritto" : "Modifica iscritto") - ViteKlub</PageTitle>
+
+<MudStack Spacing="3" Style="max-width: 900px">
+    <MudButton Href="members" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack">Torna agli iscritti</MudButton>
+    <div><h1 class="mud-typography mud-typography-h3">@(IsNew ? "Nuovo iscritto" : "Modifica iscritto")</h1>
+        <MudText Color="Color.Secondary">I dati restano locali a questo browser e appartengono all’ambiente dimostrativo.</MudText></div>
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento form iscritto" />
+        <MudText role="status">Caricamento…</MudText>
+    }
+    else if (_notFound)
+    {
+        <MudAlert Severity="Severity.Warning" role="alert">L’iscritto richiesto non esiste nel dataset demo.</MudAlert>
+    }
+    else
+    {
+        @if (_errors.Count > 0)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert" aria-live="assertive">
+                <strong>Correggi i dati indicati.</strong>
+                <ul>@foreach (string error in _errors.Values.SelectMany(value => value).Distinct()) { <li>@error</li> }</ul>
+            </MudAlert>
+        }
+        @if (_message is not null) { <MudAlert Severity="Severity.Error" role="alert">@_message</MudAlert> }
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_model.FirstName" Label="Nome" Required="true" Error="@HasError("FirstName")" ErrorText="@Error("FirstName")" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_model.LastName" Label="Cognome" Required="true" Error="@HasError("LastName")" ErrorText="@Error("LastName")" /></MudItem>
+                <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_model.DateOfBirth" Label="Data di nascita" Required="true" Error="@HasError("DateOfBirth")" ErrorText="@Error("DateOfBirth")" /></MudItem>
+                <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_model.JoinedOn" Label="Data di iscrizione" Required="true" Error="@HasError("JoinedOn")" ErrorText="@Error("JoinedOn")" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_model.Email" Label="Email" InputType="InputType.Email" Required="true" Error="@HasError("Email")" ErrorText="@Error("Email")" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_model.Phone" Label="Telefono" InputType="InputType.Telephone" Required="true" Error="@HasError("Phone")" ErrorText="@Error("Phone")" /></MudItem>
+                <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_model.MedicalCertificateExpiresOn" Label="Scadenza certificato medico (facoltativa)" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_model.EmergencyContact" Label="Contatto di emergenza (facoltativo)" Error="@HasError("EmergencyContact")" ErrorText="@Error("EmergencyContact")" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="_model.Notes" Label="Note (facoltative)" Lines="3" Error="@HasError("Notes")" ErrorText="@Error("Notes")" /></MudItem>
+                <MudItem xs="12"><MudCheckBox @bind-Value="_model.PrivacyConsent" Label="Consenso privacy" Required="@IsNew" Color="Color.Primary" /></MudItem>
+            </MudGrid>
+            <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving" aria-label="Salva iscritto">
+                @(_saving ? "Salvataggio in corso…" : "Salva iscritto")
+            </MudButton>
+            @if (_saving) { <MudText role="status" aria-live="polite">Salvataggio in corso…</MudText> }
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private bool IsNew => Id is null;
+    private bool _loading = true, _saving, _notFound;
+    private DemoDataset? _dataset;
+    private int _version;
+    private string? _message;
+    private Dictionary<string, string[]> _errors = [];
+    private FormModel _model = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        try
+        {
+            _dataset = (await DatasetStore.LoadAsync()).Dataset;
+            if (Id is Guid id)
+            {
+                Member? member = _dataset.Members.SingleOrDefault(item => item.Id == id);
+                if (member is null || member.Status == MemberStatus.Archived) { _notFound = true; return; }
+                _version = member.Version;
+                _model = FormModel.From(member);
+            }
+            else
+            {
+                _model.JoinedOn = _dataset.ReferenceDate.ToDateTime(TimeOnly.MinValue);
+            }
+        }
+        catch { _message = "Non è stato possibile caricare i dati. Riprova."; }
+        finally { _loading = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_saving || _dataset is null) return;
+        _saving = true; _errors = []; _message = null;
+        try
+        {
+            AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            Guid actor = Guid.Parse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+            DateTimeOffset timestamp = DateTimeOffset.UtcNow;
+            MemberInput input = _model.ToInput();
+            MemberOperationResult operation = IsNew
+                ? MemberManagement.Create(_dataset, input, Guid.NewGuid(), Guid.NewGuid(), actor, timestamp)
+                : MemberManagement.Update(_dataset, Id!.Value, _version, input, Guid.NewGuid(), actor, timestamp);
+            await DatasetStore.SaveAsync(operation.Dataset);
+            Navigation.NavigateTo($"members/{operation.Member.Id:D}?saved=1");
+        }
+        catch (MemberValidationException exception) { _errors = exception.Errors.ToDictionary(item => item.Key, item => item.Value); }
+        catch { _message = "Non è stato possibile salvare l’iscritto. I dati correnti non sono stati modificati."; }
+        finally { _saving = false; }
+    }
+    private bool HasError(string field) => _errors.ContainsKey(field);
+    private string? Error(string field) => _errors.TryGetValue(field, out string[]? value) ? value[0] : null;
+
+    private sealed class FormModel
+    {
+        public string? FirstName { get; set; } public string? LastName { get; set; }
+        public DateTime? DateOfBirth { get; set; } public string? Email { get; set; } public string? Phone { get; set; }
+        public DateTime? JoinedOn { get; set; } public DateTime? MedicalCertificateExpiresOn { get; set; }
+        public string? EmergencyContact { get; set; } public string? Notes { get; set; } public bool PrivacyConsent { get; set; }
+        public MemberInput ToInput() => new(FirstName, LastName, DateOnly.FromDateTime(DateOfBirth ?? default), Email, Phone,
+            DateOnly.FromDateTime(JoinedOn ?? default), MedicalCertificateExpiresOn is null ? null : DateOnly.FromDateTime(MedicalCertificateExpiresOn.Value), EmergencyContact, Notes, PrivacyConsent);
+        public static FormModel From(Member member) => new() { FirstName = member.FirstName, LastName = member.LastName,
+            DateOfBirth = member.DateOfBirth.ToDateTime(TimeOnly.MinValue), Email = member.Email, Phone = member.Phone,
+            JoinedOn = member.JoinedOn.ToDateTime(TimeOnly.MinValue), MedicalCertificateExpiresOn = member.MedicalCertificateExpiresOn?.ToDateTime(TimeOnly.MinValue),
+            EmergencyContact = member.EmergencyContact, Notes = member.Notes, PrivacyConsent = member.PrivacyConsent };
+    }
+}

@@ -1,9 +1,8 @@
-# Area Iscritti in sola lettura
+# Gestione degli iscritti
 
 ## Scopo e origine dei dati
 
-Questo incremento sostituisce il placeholder `/members` con una directory consultabile e
-un dettaglio in sola lettura. La pagina carica lo snapshot tramite `IDemoDatasetStore`:
+La directory `/members` e il dettaglio caricano lo snapshot tramite `IDemoDatasetStore`:
 usa quindi lo stesso dataset browser già disponibile in IndexedDB, con il fallback in
 memoria esistente. Non contatta API remote e non introduce un database server.
 
@@ -44,19 +43,40 @@ solo colore. Le date sono formattate nel formato italiano `gg/mm/aaaa`.
 ## Autorizzazione e stati della UI
 
 `/members` e `/members/{id}` usano l’infrastruttura esistente con `AuthorizeRouteView` e
-sono autorizzate per Administrator, Manager, Receptionist e Viewer. Il Viewer vede gli
-stessi dati in sola lettura degli altri ruoli: nessun ruolo dispone qui di comandi di
-creazione, modifica, archiviazione, eliminazione, importazione o esportazione.
+sono autorizzate per Administrator, Manager, Receptionist e Viewer. Administrator,
+Manager e Receptionist possono usare le route realmente protette `/members/new` e
+`/members/{id}/edit` e le azioni di stato; il Viewer resta in sola lettura e non vede tali
+comandi.
 
 La lista comunica in modo accessibile il caricamento, un errore dello storage, il dataset
 senza iscritti e l’assenza di corrispondenze ai filtri. I controlli hanno etichette e sono
 utilizzabili da tastiera; la tabella adotta il layout responsive di MudBlazor sui viewport
 piccoli.
 
-## Limitazioni e funzionalità escluse
+## Regole e flusso operativo
 
-L’area è dimostrativa, interamente client-side e non persiste alcuna modifica. Non include
-CRUD degli iscritti, archiviazione operativa, import/export, backend, né CRUD di
-abbonamenti, accessi o pagamenti. Non modifica seed, autenticazione, matrice globale dei
-ruoli, deploy o gli altri placeholder. Non sono presenti azioni amministrative o problemi
-aperti noti nell’ambito di questo incremento.
+`MemberManagement` riceve sempre dataset, identificativi, utente demo e timestamp dal
+chiamante e produce un nuovo snapshot senza mutare quello sorgente. Il form normalizza
+tramite Core gli spazi iniziali, finali e multipli e valida obbligatorietà, formato email,
+lunghezze e coerenza delle date. Alla creazione il consenso privacy è obbligatorio e lo
+stato iniziale è `Active`; in modifica identificativo, numero tessera, timestamp di
+creazione e relazioni restano invariati. La versione aumenta a ogni modifica o transizione
+e impedisce di sovrascrivere silenziosamente una versione non più corrente.
+
+Il numero tessera usa il formato `VK-00000`: viene scelto il più piccolo intero positivo
+non già presente. La strategia è deterministica, indipendente dall’orologio, funziona con
+dataset vuoti e riutilizza il primo intervallo libero senza rinumerare record esistenti.
+
+Le sole transizioni ammesse sono `Active → Suspended`, `Suspended → Active`, `Active →
+Archived` e `Suspended → Archived`. L’archiviazione è logica e irreversibile dalla UI:
+l’iscritto e abbonamenti, accessi e pagamenti collegati non vengono eliminati. Ogni
+operazione riuscita aggiunge un evento audit con azione, identificativo entità, attore e
+timestamp, senza email, telefono, note o altri dati personali.
+
+## Consistenza e limiti
+
+Il salvataggio riguarda sempre l’intero `DemoDataset`; directory, dettaglio e dashboard lo
+rileggono dallo store e la dashboard continua a usare `DashboardProjection`. I comandi si
+disabilitano durante il salvataggio. Un errore mostra un messaggio italiano e conserva lo
+snapshot corrente. I dati sono fittizi, locali al browser e non sincronizzati tra dispositivi
+o schede; non esistono backend né lock remoti.

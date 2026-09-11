@@ -116,6 +116,9 @@ public sealed class DemoAuthenticationStateProviderTests
         public Task<DemoDatasetSnapshot> LoadAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new DemoDatasetSnapshot(dataset, DemoStorageMode.InMemory));
 
+        public Task<DemoDatasetSnapshot> SaveAsync(DemoDataset value, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<DemoDatasetSnapshot> RestoreInitialDatasetAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }

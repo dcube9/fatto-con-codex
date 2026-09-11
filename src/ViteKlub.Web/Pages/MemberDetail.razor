@@ -1,6 +1,9 @@
 @page "/members/{Id:guid}"
 @attribute [Authorize(Roles = DemoRoles.All)]
 @inject IDemoDatasetStore DatasetStore
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Dettaglio iscritto - ViteKlub</PageTitle>
 
@@ -28,8 +31,18 @@
     {
         <div>
             <h1 class="mud-typography mud-typography-h3">@_member.FirstName @_member.LastName</h1>
-            <MudText Color="Color.Secondary">Dettaglio in sola lettura dell’iscritto demo.</MudText>
+            <MudText Color="Color.Secondary">Dati dell’iscritto demo memorizzati localmente.</MudText>
         </div>
+        @if (_feedback is not null) { <MudAlert Severity="Severity.Success" role="status" aria-live="polite">@_feedback</MudAlert> }
+        <AuthorizeView Roles="@DemoRoles.MemberManagement">
+            <MudStack Row="true" Style="flex-wrap: wrap">
+                @if (_member.Status != MemberStatus.Archived) { <MudButton Href="@($"members/{Id:D}/edit")" Disabled="_saving">Modifica</MudButton> }
+                @if (_member.Status == MemberStatus.Active) { <MudButton OnClick="@(() => ChangeStatusAsync(MemberStatus.Suspended))" Disabled="_saving">Sospendi</MudButton> }
+                @if (_member.Status == MemberStatus.Suspended) { <MudButton OnClick="@(() => ChangeStatusAsync(MemberStatus.Active))" Disabled="_saving">Riattiva</MudButton> }
+                @if (_member.Status is MemberStatus.Active or MemberStatus.Suspended) { <MudButton Color="Color.Error" OnClick="ArchiveAsync" Disabled="_saving">Archivia</MudButton> }
+            </MudStack>
+        </AuthorizeView>
+        @if (_saving) { <MudText role="status" aria-live="polite">Salvataggio in corso…</MudText> }
         <MudPaper Class="pa-4" Outlined="true">
             <MudGrid>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Numero tessera</MudText><MudText>@_member.MemberNumber</MudText></MudItem>
@@ -50,6 +63,9 @@
     private Member? _member;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private DemoDataset? _dataset;
+    private bool _saving;
+    private string? _feedback;
 
     private MedicalCertificateState CertificateState => MemberDirectory.ClassifyCertificate(
         _member?.MedicalCertificateExpiresOn, _referenceDate);
@@ -69,7 +85,9 @@
         try
         {
             DemoDatasetSnapshot snapshot = await DatasetStore.LoadAsync();
+            _dataset = snapshot.Dataset;
             _member = MemberDirectory.FindById(snapshot.Dataset.Members, Id);
+            if (NavigationManager.Uri.Contains("saved=1", StringComparison.Ordinal)) _feedback = "Iscritto salvato correttamente.";
         }
         catch (Exception)
         {
@@ -83,4 +101,29 @@
 
     private static string FormatDate(DateOnly date) => date.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.GetCultureInfo("it-IT"));
     private static string FormatDate(DateOnly? date) => date is null ? "Non presente" : FormatDate(date.Value);
+
+    private async Task ArchiveAsync()
+    {
+        bool? confirmed = await DialogService.ShowMessageBox("Conferma archiviazione",
+            $"Archiviare {_member!.FirstName} {_member.LastName}? L’iscritto resterà nello storico e non potrà essere riattivato.", yesText: "Archivia", cancelText: "Annulla");
+        if (confirmed == true) await ChangeStatusAsync(MemberStatus.Archived);
+    }
+
+    private async Task ChangeStatusAsync(MemberStatus target)
+    {
+        if (_saving || _dataset is null || _member is null) return;
+        _saving = true; _errorMessage = null;
+        try
+        {
+            AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            Guid actor = Guid.Parse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+            MemberOperationResult operation = MemberManagement.ChangeStatus(_dataset, Id, _member.Version, target, Guid.NewGuid(), actor, DateTimeOffset.UtcNow);
+            DemoDatasetSnapshot saved = await DatasetStore.SaveAsync(operation.Dataset);
+            _dataset = saved.Dataset; _member = operation.Member;
+            _feedback = target switch { MemberStatus.Active => "Iscritto riattivato.", MemberStatus.Suspended => "Iscritto sospeso.", _ => "Iscritto archiviato." };
+        }
+        catch (MemberValidationException exception) { _errorMessage = exception.Errors.Values.SelectMany(item => item).First(); }
+        catch { _errorMessage = "Non è stato possibile completare l’operazione. I dati correnti non sono stati modificati."; }
+        finally { _saving = false; }
+    }
 }

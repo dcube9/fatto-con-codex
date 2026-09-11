@@ -13,6 +13,59 @@ public sealed class BrowserDemoDatasetStoreTests
     private static readonly string SeedJson = LoadSeedJson();
 
     [Fact]
+    public async Task SaveValidatesSerializesAndLoadsUpdatedIndexedDbSnapshot()
+    {
+        var jsRuntime = new TestJsRuntime(SeedJson);
+        var store = CreateStore(jsRuntime);
+        DemoDataset original = (await store.LoadAsync()).Dataset;
+        DemoDataset changed = original with { DatasetVersion = "saved-v2" };
+
+        DemoDatasetSnapshot saved = await store.SaveAsync(changed);
+        DemoDatasetSnapshot loaded = await store.LoadAsync();
+
+        Assert.Equal(DemoStorageMode.IndexedDb, saved.StorageMode);
+        Assert.Equal("saved-v2", loaded.Dataset.DatasetVersion);
+        Assert.NotSame(changed, saved.Dataset);
+        Assert.Equal(DemoDatasetJson.Serialize(changed), jsRuntime.StoredJson);
+    }
+
+    [Fact]
+    public async Task SaveUpdatesMemoryFallbackAndReturnsMemoryMode()
+    {
+        var jsRuntime = new TestJsRuntime { IsUnavailable = true };
+        var store = CreateStore(jsRuntime);
+        DemoDataset original = (await store.LoadAsync()).Dataset;
+
+        DemoDatasetSnapshot saved = await store.SaveAsync(original with { DatasetVersion = "memory-v2" });
+
+        Assert.Equal(DemoStorageMode.InMemory, saved.StorageMode);
+        Assert.Equal("memory-v2", (await store.LoadAsync()).Dataset.DatasetVersion);
+        Assert.Equal(0, jsRuntime.SaveAttempts);
+    }
+
+    [Fact]
+    public async Task SaveRejectsInvalidDatasetBeforePersistenceAndHonorsCancellation()
+    {
+        var jsRuntime = new TestJsRuntime(SeedJson);
+        var store = CreateStore(jsRuntime);
+        DemoDataset original = (await store.LoadAsync()).Dataset;
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(original with { SchemaVersion = 999 }));
+        Assert.Equal(0, jsRuntime.SaveAttempts);
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.SaveAsync(original, cancellation.Token));
+    }
+
+    [Fact]
+    public async Task FailedIndexedDbSaveDoesNotReplaceCurrentDataset()
+    {
+        var jsRuntime = new TestJsRuntime(SeedJson) { SaveFails = true };
+        var store = CreateStore(jsRuntime);
+        DemoDataset original = (await store.LoadAsync()).Dataset;
+        await Assert.ThrowsAsync<JSException>(() => store.SaveAsync(original with { DatasetVersion = "not-saved" }));
+        Assert.Equal("initial-v1", (await store.LoadAsync()).Dataset.DatasetVersion);
+    }
+
+    [Fact]
     public async Task LoadAsyncSeedsEmptyIndexedDbAndExposesMetadataAndCounts()
     {
         var jsRuntime = new TestJsRuntime();
