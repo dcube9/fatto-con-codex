@@ -1,0 +1,59 @@
+@page "/payments/{Id:guid}"
+@attribute [Authorize(Roles = DemoRoles.Payments)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Dettaglio pagamento - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <MudButton Variant="Variant.Text" Href="payments" StartIcon="@Icons.Material.Filled.ArrowBack">Torna ai pagamenti</MudButton>
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento dettaglio pagamento" />
+        <MudText role="status" aria-live="polite">Caricamento del dettaglio…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_payment is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" role="alert">Il pagamento richiesto non esiste nel dataset demo.</MudAlert>
+    }
+    else
+    {
+        <div><h1 class="mud-typography mud-typography-h3">Dettaglio pagamento</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei dati demo. Data e ora sono mostrate in UTC.</MudText></div>
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Data e ora</MudText><MudText>@PaymentDirectory.FormatOccurredAt(_payment.OccurredAtUtc)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Importo e valuta</MudText><MudText>@_payment.FormattedAmount</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Metodo</MudText><MudText>@PaymentDirectory.MethodLabel(_payment.Method)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Stato</MudText><MudChip T="string" Variant="Variant.Outlined">@PaymentDirectory.StatusLabel(_payment.Status)</MudChip></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Numero tessera</MudText><MudText>@_payment.MemberNumber</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Iscritto</MudText><MudText>@_payment.MemberFullName</MudText>@if (_payment.HasMember) { <MudLink Href="@($"members/{_payment.MemberId:D}")">Apri dettaglio iscritto</MudLink> }</MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Riferimento</MudText><MudText>@_payment.ReferenceLabel</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Abbonamento</MudText><MudText>@_payment.SubscriptionLabel</MudText>@if (_payment.HasSubscription && _payment.SubscriptionId is Guid subscriptionId) { <MudLink Href="@($"memberships/{subscriptionId:D}")">Apri dettaglio abbonamento</MudLink> }</MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Registrato da</MudText><MudText>@_payment.RecordedBy</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private PaymentDirectoryItem? _payment;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            DemoDataset dataset = (await DatasetStore.LoadAsync()).Dataset;
+            _payment = PaymentDirectory.FindById(PaymentDirectory.Project(dataset.Payments, dataset.Members, dataset.Subscriptions, dataset.Users), Id);
+        }
+        catch (Exception) { _errorMessage = "Non è stato possibile caricare il dettaglio. Ricarica la pagina per riprovare."; }
+        finally { _isLoading = false; }
+    }
+}

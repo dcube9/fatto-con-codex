@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using ViteKlub.Web.Authentication;
 using Xunit;
 
@@ -42,6 +43,19 @@ public sealed class DemoAuthorizationTests
     public void UnknownRouteIsNotAuthorized()
     {
         Assert.False(DemoNavigation.IsAuthorized("not-a-route", CreatePrincipal(DemoRoles.Administrator)));
+    }
+
+    [Theory]
+    [InlineData(typeof(ViteKlub.Web.Pages.Payments))]
+    [InlineData(typeof(ViteKlub.Web.Pages.PaymentDetail))]
+    public void PaymentRoutesRequireThePaymentRoleMatrix(Type pageType)
+    {
+        AuthorizeAttribute attribute = Assert.Single(pageType.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true).Cast<AuthorizeAttribute>());
+
+        Assert.Equal(DemoRoles.Payments, attribute.Roles);
+        Assert.All([DemoRoles.Administrator, DemoRoles.Manager, DemoRoles.Receptionist],
+            role => Assert.Contains(role, attribute.Roles!.Split(',')));
+        Assert.DoesNotContain(DemoRoles.Viewer, attribute.Roles!.Split(','));
     }
 
     [Theory]

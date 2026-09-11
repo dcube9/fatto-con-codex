@@ -1,0 +1,144 @@
+@page "/payments"
+@attribute [Authorize(Roles = DemoRoles.Payments)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Pagamenti - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Pagamenti</h1>
+        <MudText Color="Color.Secondary">Consulta i pagamenti demo in sola lettura. Data e ora sono mostrate in UTC.</MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento pagamenti" />
+        <MudText role="status" aria-live="polite">Caricamento dei pagamenti…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_payments.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" role="status">Il dataset demo non contiene pagamenti.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="Cerca pagamenti" Value="_search" ValueChanged="SearchChanged"
+                                  Placeholder="Tessera, iscritto, riferimento o utente demo" Immediate="true" Clearable="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="PaymentMethod?" Label="Metodo" Value="_method" ValueChanged="MethodChanged">
+                        <MudSelectItem T="PaymentMethod?" Value="@(null)">Tutti</MudSelectItem>
+                        @foreach (PaymentMethod value in Enum.GetValues<PaymentMethod>())
+                        {
+                            <MudSelectItem T="PaymentMethod?" Value="@value">@PaymentDirectory.MethodLabel(value)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="PaymentStatus?" Label="Stato" Value="_status" ValueChanged="StatusChanged">
+                        <MudSelectItem T="PaymentStatus?" Value="@(null)">Tutti</MudSelectItem>
+                        @foreach (PaymentStatus value in Enum.GetValues<PaymentStatus>())
+                        {
+                            <MudSelectItem T="PaymentStatus?" Value="@value">@PaymentDirectory.StatusLabel(value)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="PaymentSortField" Label="Ordina per" Value="_sortBy" ValueChanged="SortChanged">
+                        <MudSelectItem Value="PaymentSortField.OccurredAt">Data e ora</MudSelectItem>
+                        <MudSelectItem Value="PaymentSortField.MemberNumber">Numero tessera</MudSelectItem>
+                        <MudSelectItem Value="PaymentSortField.MemberName">Cognome e nome</MudSelectItem>
+                        <MudSelectItem Value="PaymentSortField.Amount">Importo</MudSelectItem>
+                        <MudSelectItem Value="PaymentSortField.Method">Metodo</MudSelectItem>
+                        <MudSelectItem Value="PaymentSortField.Status">Stato</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIconButton Icon="@DirectionIcon" OnClick="ToggleDirection" aria-label="@DirectionLabel" />
+                        <MudButton Variant="Variant.Text" OnClick="ResetFilters">Azzera ricerca e filtri</MudButton>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudText role="status" aria-live="polite">@ResultCountLabel</MudText>
+        @if (_result.TotalCount == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Nessun pagamento corrisponde alla ricerca e ai filtri selezionati.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_result.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="0" aria-label="Elenco dei pagamenti">
+                <HeaderContent>
+                    <MudTh>Data e ora</MudTh><MudTh>Iscritto</MudTh><MudTh>Importo</MudTh><MudTh>Metodo</MudTh>
+                    <MudTh>Stato</MudTh><MudTh>Riferimento</MudTh><MudTh>Abbonamento</MudTh><MudTh>Registrato da</MudTh><MudTh>Dettaglio</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Data e ora">@PaymentDirectory.FormatOccurredAt(context.OccurredAtUtc)</MudTd>
+                    <MudTd DataLabel="Iscritto"><MudText>@context.MemberNumber</MudText><MudText Typo="Typo.caption">@context.MemberFullName</MudText></MudTd>
+                    <MudTd DataLabel="Importo">@context.FormattedAmount</MudTd>
+                    <MudTd DataLabel="Metodo">@PaymentDirectory.MethodLabel(context.Method)</MudTd>
+                    <MudTd DataLabel="Stato"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@PaymentDirectory.StatusLabel(context.Status)</MudChip></MudTd>
+                    <MudTd DataLabel="Riferimento">@context.ReferenceLabel</MudTd>
+                    <MudTd DataLabel="Abbonamento">@context.SubscriptionLabel</MudTd>
+                    <MudTd DataLabel="Registrato da">@context.RecordedBy</MudTd>
+                    <MudTd DataLabel="Dettaglio"><MudButton Variant="Variant.Text" Href="@($"payments/{context.Id:D}")" aria-label="Apri il dettaglio del pagamento">Visualizza</MudButton></MudTd>
+                </RowTemplate>
+            </MudTable>
+            @if (_result.PageCount > 1)
+            {
+                <MudPagination Count="_result.PageCount" Selected="_page" SelectedChanged="PageChanged" aria-label="Paginazione pagamenti" />
+            }
+        }
+    }
+</MudStack>
+
+@code {
+    private const int PageSize = 10;
+    private IReadOnlyList<PaymentDirectoryItem> _payments = [];
+    private PaymentDirectoryResult _result = new([], 0, 1, PageSize);
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _search;
+    private PaymentMethod? _method;
+    private PaymentStatus? _status;
+    private PaymentSortField _sortBy = PaymentSortField.OccurredAt;
+    private PaymentSortDirection _direction = PaymentSortDirection.Descending;
+    private int _page = 1;
+
+    private string DirectionIcon => _direction == PaymentSortDirection.Ascending ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward;
+    private string DirectionLabel => _direction == PaymentSortDirection.Ascending ? "Ordinamento crescente; passa a decrescente" : "Ordinamento decrescente; passa a crescente";
+    private string ResultCountLabel => _result.TotalCount == 1 ? "1 pagamento trovato" : $"{_result.TotalCount} pagamenti trovati";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            DemoDataset dataset = (await DatasetStore.LoadAsync()).Dataset;
+            _payments = PaymentDirectory.Project(dataset.Payments, dataset.Members, dataset.Subscriptions, dataset.Users);
+            ApplyQuery();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare i pagamenti. Ricarica la pagina per riprovare.";
+        }
+        finally { _isLoading = false; }
+    }
+
+    private void ApplyQuery() => _result = PaymentDirectory.Query(_payments, new(_search, _method, _status, _sortBy, _direction, _page, PageSize));
+    private void SearchChanged(string? value) { _search = value; ResetPageAndQuery(); }
+    private void MethodChanged(PaymentMethod? value) { _method = value; ResetPageAndQuery(); }
+    private void StatusChanged(PaymentStatus? value) { _status = value; ResetPageAndQuery(); }
+    private void SortChanged(PaymentSortField value) { _sortBy = value; ResetPageAndQuery(); }
+    private void ToggleDirection() { _direction = _direction == PaymentSortDirection.Ascending ? PaymentSortDirection.Descending : PaymentSortDirection.Ascending; ResetPageAndQuery(); }
+    private void PageChanged(int value) { _page = value; ApplyQuery(); }
+    private void ResetFilters() { _search = null; _method = null; _status = null; _page = 1; ApplyQuery(); }
+    private void ResetPageAndQuery() { _page = 1; ApplyQuery(); }
+}
