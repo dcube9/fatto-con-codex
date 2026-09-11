@@ -1,0 +1,153 @@
+@page "/accesses"
+@attribute [Authorize(Roles = DemoRoles.All)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Accessi - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Accessi</h1>
+        <MudText Color="Color.Secondary">Consulta il registro degli accessi demo. Data e ora sono mostrate in UTC.</MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento accessi" />
+        <MudText role="status" aria-live="polite">Caricamento degli accessi…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_accesses.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" role="status">Il dataset demo non contiene accessi.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="Cerca accessi" Value="_search" ValueChanged="SearchChanged"
+                                  Placeholder="Tessera, iscritto o utente demo" Immediate="true" Clearable="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="AccessOutcome?" Label="Esito" Value="_outcome" ValueChanged="OutcomeChanged">
+                        <MudSelectItem T="AccessOutcome?" Value="@(null)">Tutti</MudSelectItem>
+                        @foreach (AccessOutcome value in Enum.GetValues<AccessOutcome>())
+                        {
+                            <MudSelectItem T="AccessOutcome?" Value="@value">@AccessDirectory.OutcomeLabel(value)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="AccessSource?" Label="Origine" Value="_source" ValueChanged="SourceChanged">
+                        <MudSelectItem T="AccessSource?" Value="@(null)">Tutte</MudSelectItem>
+                        @foreach (AccessSource value in Enum.GetValues<AccessSource>())
+                        {
+                            <MudSelectItem T="AccessSource?" Value="@value">@AccessDirectory.SourceLabel(value)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="AccessDenialReason?" Label="Motivo del rifiuto" Value="_denialReason" ValueChanged="DenialReasonChanged">
+                        <MudSelectItem T="AccessDenialReason?" Value="@(null)">Tutti</MudSelectItem>
+                        @foreach (AccessDenialReason value in Enum.GetValues<AccessDenialReason>())
+                        {
+                            <MudSelectItem T="AccessDenialReason?" Value="@value">@AccessDirectory.DenialReasonLabel(value)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="AccessSortField" Label="Ordina per" Value="_sortBy" ValueChanged="SortChanged">
+                        <MudSelectItem Value="AccessSortField.OccurredAt">Data e ora</MudSelectItem>
+                        <MudSelectItem Value="AccessSortField.MemberNumber">Numero tessera</MudSelectItem>
+                        <MudSelectItem Value="AccessSortField.MemberName">Cognome e nome</MudSelectItem>
+                        <MudSelectItem Value="AccessSortField.Outcome">Esito</MudSelectItem>
+                        <MudSelectItem Value="AccessSortField.Source">Origine</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIconButton Icon="@DirectionIcon" OnClick="ToggleDirection" aria-label="@DirectionLabel" />
+                        <MudButton Variant="Variant.Text" OnClick="ResetFilters">Azzera ricerca e filtri</MudButton>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudText role="status" aria-live="polite">@ResultCountLabel</MudText>
+        @if (_result.TotalCount == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Nessun accesso corrisponde alla ricerca e ai filtri selezionati.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_result.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="0" aria-label="Registro degli accessi">
+                <HeaderContent>
+                    <MudTh>Data e ora</MudTh><MudTh>Iscritto</MudTh><MudTh>Esito</MudTh><MudTh>Origine</MudTh>
+                    <MudTh>Motivo</MudTh><MudTh>Abbonamento</MudTh><MudTh>Registrato da</MudTh><MudTh>Dettaglio</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Data e ora">@AccessDirectory.FormatOccurredAt(context.OccurredAtUtc)</MudTd>
+                    <MudTd DataLabel="Iscritto"><MudText>@context.MemberNumber</MudText><MudText Typo="Typo.caption">@context.MemberFullName</MudText></MudTd>
+                    <MudTd DataLabel="Esito"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@AccessDirectory.OutcomeLabel(context.Outcome)</MudChip></MudTd>
+                    <MudTd DataLabel="Origine">@AccessDirectory.SourceLabel(context.Source)</MudTd>
+                    <MudTd DataLabel="Motivo">@context.DenialReasonLabel</MudTd>
+                    <MudTd DataLabel="Abbonamento">@context.SubscriptionLabel</MudTd>
+                    <MudTd DataLabel="Registrato da">@context.RecordedBy</MudTd>
+                    <MudTd DataLabel="Dettaglio"><MudButton Variant="Variant.Text" Href="@($"accesses/{context.Id:D}")" aria-label="Apri il dettaglio dell’accesso">Visualizza</MudButton></MudTd>
+                </RowTemplate>
+            </MudTable>
+            @if (_result.PageCount > 1)
+            {
+                <MudPagination Count="_result.PageCount" Selected="_page" SelectedChanged="PageChanged" aria-label="Paginazione accessi" />
+            }
+        }
+    }
+</MudStack>
+
+@code {
+    private const int PageSize = 10;
+    private IReadOnlyList<AccessDirectoryItem> _accesses = [];
+    private AccessDirectoryResult _result = new([], 0, 1, PageSize);
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _search;
+    private AccessOutcome? _outcome;
+    private AccessSource? _source;
+    private AccessDenialReason? _denialReason;
+    private AccessSortField _sortBy = AccessSortField.OccurredAt;
+    private AccessSortDirection _direction = AccessSortDirection.Descending;
+    private int _page = 1;
+
+    private string DirectionIcon => _direction == AccessSortDirection.Ascending ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward;
+    private string DirectionLabel => _direction == AccessSortDirection.Ascending ? "Ordinamento crescente; passa a decrescente" : "Ordinamento decrescente; passa a crescente";
+    private string ResultCountLabel => _result.TotalCount == 1 ? "1 accesso trovato" : $"{_result.TotalCount} accessi trovati";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            DemoDataset dataset = (await DatasetStore.LoadAsync()).Dataset;
+            _accesses = AccessDirectory.Project(dataset.Accesses, dataset.Members, dataset.Subscriptions, dataset.Users);
+            ApplyQuery();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare gli accessi. Ricarica la pagina per riprovare.";
+        }
+        finally { _isLoading = false; }
+    }
+
+    private void ApplyQuery() => _result = AccessDirectory.Query(_accesses, new(_search, _outcome, _source, _denialReason, _sortBy, _direction, _page, PageSize));
+    private void SearchChanged(string? value) { _search = value; ResetPageAndQuery(); }
+    private void OutcomeChanged(AccessOutcome? value) { _outcome = value; ResetPageAndQuery(); }
+    private void SourceChanged(AccessSource? value) { _source = value; ResetPageAndQuery(); }
+    private void DenialReasonChanged(AccessDenialReason? value) { _denialReason = value; ResetPageAndQuery(); }
+    private void SortChanged(AccessSortField value) { _sortBy = value; ResetPageAndQuery(); }
+    private void ToggleDirection() { _direction = _direction == AccessSortDirection.Ascending ? AccessSortDirection.Descending : AccessSortDirection.Ascending; ResetPageAndQuery(); }
+    private void PageChanged(int value) { _page = value; ApplyQuery(); }
+    private void ResetFilters() { _search = null; _outcome = null; _source = null; _denialReason = null; _page = 1; ApplyQuery(); }
+    private void ResetPageAndQuery() { _page = 1; ApplyQuery(); }
+}

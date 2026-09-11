@@ -1,0 +1,58 @@
+@page "/accesses/{Id:guid}"
+@attribute [Authorize(Roles = DemoRoles.All)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Dettaglio accesso - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <MudButton Variant="Variant.Text" Href="accesses" StartIcon="@Icons.Material.Filled.ArrowBack">Torna agli accessi</MudButton>
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento dettaglio accesso" />
+        <MudText role="status" aria-live="polite">Caricamento del dettaglio…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_access is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" role="alert">L’accesso richiesto non esiste nel dataset demo.</MudAlert>
+    }
+    else
+    {
+        <div><h1 class="mud-typography mud-typography-h3">Dettaglio accesso</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei dati demo. Data e ora sono mostrate in UTC.</MudText></div>
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Data e ora</MudText><MudText>@AccessDirectory.FormatOccurredAt(_access.OccurredAtUtc)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Esito</MudText><MudChip T="string" Variant="Variant.Outlined">@AccessDirectory.OutcomeLabel(_access.Outcome)</MudChip></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Numero tessera</MudText><MudText>@_access.MemberNumber</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Iscritto</MudText><MudText>@_access.MemberFullName</MudText>@if (_access.HasMember) { <MudLink Href="@($"members/{_access.MemberId:D}")">Apri dettaglio iscritto</MudLink> }</MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Origine</MudText><MudText>@AccessDirectory.SourceLabel(_access.Source)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Motivo del rifiuto</MudText><MudText>@_access.DenialReasonLabel</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Abbonamento</MudText><MudText>@_access.SubscriptionLabel</MudText>@if (_access.HasSubscription && _access.SubscriptionId is Guid subscriptionId) { <MudLink Href="@($"memberships/{subscriptionId:D}")">Apri dettaglio abbonamento</MudLink> }</MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Registrato da</MudText><MudText>@_access.RecordedBy</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private AccessDirectoryItem? _access;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            DemoDataset dataset = (await DatasetStore.LoadAsync()).Dataset;
+            _access = AccessDirectory.FindById(AccessDirectory.Project(dataset.Accesses, dataset.Members, dataset.Subscriptions, dataset.Users), Id);
+        }
+        catch (Exception) { _errorMessage = "Non è stato possibile caricare il dettaglio. Ricarica la pagina per riprovare."; }
+        finally { _isLoading = false; }
+    }
+}
