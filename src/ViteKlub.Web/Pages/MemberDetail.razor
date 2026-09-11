@@ -1,0 +1,86 @@
+@page "/members/{Id:guid}"
+@attribute [Authorize(Roles = DemoRoles.All)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Dettaglio iscritto - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <MudButton Variant="Variant.Text" Href="members" StartIcon="@Icons.Material.Filled.ArrowBack">
+        Torna agli iscritti
+    </MudButton>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Caricamento dettaglio iscritto" />
+        <MudText role="status">Caricamento del dettaglio…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_member is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" role="alert">
+            L’iscritto richiesto non esiste nel dataset demo.
+        </MudAlert>
+    }
+    else
+    {
+        <div>
+            <h1 class="mud-typography mud-typography-h3">@_member.FirstName @_member.LastName</h1>
+            <MudText Color="Color.Secondary">Dettaglio in sola lettura dell’iscritto demo.</MudText>
+        </div>
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Numero tessera</MudText><MudText>@_member.MemberNumber</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Stato</MudText><MudText>@MemberDirectory.MemberStatusLabel(_member.Status)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Data di iscrizione</MudText><MudText>@FormatDate(_member.JoinedOn)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Scadenza certificato medico</MudText><MudText>@FormatDate(_member.MedicalCertificateExpiresOn)</MudText></MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.overline">Stato certificato medico</MudText><MudAlert Severity="@CertificateSeverity" Variant="Variant.Outlined">@CertificateLabel</MudAlert></MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private readonly DateOnly _referenceDate = DateOnly.FromDateTime(DateTime.Today);
+    private Member? _member;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    private MedicalCertificateState CertificateState => MemberDirectory.ClassifyCertificate(
+        _member?.MedicalCertificateExpiresOn, _referenceDate);
+    private string CertificateLabel => MemberDirectory.CertificateStateLabel(CertificateState);
+    private Severity CertificateSeverity => CertificateState switch
+    {
+        MedicalCertificateState.Expired => Severity.Error,
+        MedicalCertificateState.ExpiringSoon => Severity.Warning,
+        MedicalCertificateState.Valid => Severity.Success,
+        _ => Severity.Info
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            DemoDatasetSnapshot snapshot = await DatasetStore.LoadAsync();
+            _member = MemberDirectory.FindById(snapshot.Dataset.Members, Id);
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare il dettaglio. Ricarica la pagina per riprovare.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatDate(DateOnly date) => date.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.GetCultureInfo("it-IT"));
+    private static string FormatDate(DateOnly? date) => date is null ? "Non presente" : FormatDate(date.Value);
+}
