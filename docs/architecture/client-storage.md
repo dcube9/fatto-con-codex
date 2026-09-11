@@ -65,3 +65,16 @@ autenticazione è separato e la sessione amministrativa corrente rimane attiva.
   salvataggio richiesto esplicitamente;
 - non sono implementate migrazioni tra versioni schema: un dataset non compatibile viene
   segnalato come errore.
+# Persistenza client-side
+
+`IDemoDatasetStore.SaveAsync` valida l’intero dataset, lo serializza esclusivamente con
+`DemoDatasetJson` e restituisce uno snapshot che dichiara la modalità effettiva. Con
+IndexedDB disponibile, lo stato corrente non viene sostituito se la scrittura fallisce;
+in fallback viene aggiornata una copia deserializzata mantenuta in memoria. Il round-trip
+impedisce allo store di trattenere l’istanza mutabile ricevuta e la cancellazione viene
+propagata.
+
+Caricamento e ripristino del seed conservano il comportamento precedente. Il ripristino
+sostituisce eventuali modifiche locali con il dataset dimostrativo iniziale. In memoria i
+dati non sopravvivono al reload; IndexedDB persiste nello stesso browser. Nessuna delle due
+modalità sincronizza dati con server, altri browser, dispositivi o schede concorrenti.

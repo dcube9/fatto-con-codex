@@ -12,6 +12,9 @@
             Consulta l’elenco degli iscritti demo e lo stato del loro certificato medico.
         </MudText>
     </div>
+    <AuthorizeView Roles="@DemoRoles.MemberManagement">
+        <MudButton Href="members/new" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd">Nuovo iscritto</MudButton>
+    </AuthorizeView>
 
     @if (_isLoading)
     {

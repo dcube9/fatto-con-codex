@@ -9,6 +9,7 @@ public static class DemoRoles
 
     public const string All = $"{Administrator},{Manager},{Receptionist},{Viewer}";
     public const string Operational = $"{Administrator},{Manager},{Receptionist},{Viewer}";
+    public const string MemberManagement = $"{Administrator},{Manager},{Receptionist}";
     public const string Payments = $"{Administrator},{Manager},{Receptionist}";
     public const string Administration = Administrator;
 }

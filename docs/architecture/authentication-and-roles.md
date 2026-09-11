@@ -47,16 +47,17 @@ Le claims generate sono:
 | Area | Administrator | Manager | Receptionist | Viewer |
 | --- | :---: | :---: | :---: | :---: |
 | Dashboard | ✓ | ✓ | ✓ | ✓ |
-| Iscritti | ✓ | ✓ | ✓ | ✓ (sola lettura) |
+| Iscritti (consultazione) | ✓ | ✓ | ✓ | ✓ (sola lettura) |
+| Iscritti (gestione) | ✓ | ✓ | ✓ | — |
 | Abbonamenti | ✓ | ✓ | ✓ | ✓ (sola lettura) |
 | Accessi | ✓ | ✓ | ✓ | ✓ (sola lettura) |
 | Pagamenti | ✓ | ✓ | ✓ | — |
 | Utenti demo | ✓ | — | — | — |
 | Gestione demo | ✓ | — | — | — |
 
-In questo incremento le aree funzionali restano segnaposto: non vengono introdotte
-operazioni CRUD. La distinzione di sola lettura del Viewer sarà applicata alle azioni
-quando tali funzioni verranno implementate; per ora limita l'insieme delle aree visibili.
+La gestione iscritti applica la distinzione di sola lettura del Viewer sia alla visibilità
+delle azioni sia alle route operative tramite `DemoRoles.MemberManagement` e `Authorize`.
+Le altre aree mantengono le rispettive capacità indicate nella tabella.
 
 `Administrator` ha accesso completo. `Manager` e `Receptionist` accedono alle aree
 operative, dashboard e pagamenti. `Viewer` accede soltanto alle viste informative

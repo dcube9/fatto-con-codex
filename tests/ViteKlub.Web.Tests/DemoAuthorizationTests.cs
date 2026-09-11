@@ -57,6 +57,17 @@ public sealed class DemoAuthorizationTests
         Assert.False(DemoNavigation.IsAuthorized("not-a-route", CreatePrincipal(DemoRoles.Administrator)));
     }
 
+    [Fact]
+    public void MemberManagementExcludesViewer()
+    {
+        string[] roles = DemoRoles.MemberManagement.Split(',');
+        Assert.All([DemoRoles.Administrator, DemoRoles.Manager, DemoRoles.Receptionist], role => Assert.Contains(role, roles));
+        Assert.DoesNotContain(DemoRoles.Viewer, roles);
+        AuthorizeAttribute attribute = Assert.Single(typeof(ViteKlub.Web.Pages.MemberEdit)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>());
+        Assert.Equal(DemoRoles.MemberManagement, attribute.Roles);
+    }
+
     [Theory]
     [InlineData(typeof(ViteKlub.Web.Pages.Payments))]
     [InlineData(typeof(ViteKlub.Web.Pages.PaymentDetail))]
