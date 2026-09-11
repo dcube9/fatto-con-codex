@@ -71,6 +71,18 @@ public sealed class DemoAuthorizationTests
             role => Assert.DoesNotContain(role, attribute.Roles!.Split(',')));
     }
 
+    [Fact]
+    public void DemoManagementRouteRequiresAdministrator()
+    {
+        AuthorizeAttribute attribute = Assert.Single(typeof(ViteKlub.Web.Pages.DemoManagement)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>());
+
+        Assert.Equal(DemoRoles.Administrator, attribute.Roles);
+        Assert.All([DemoRoles.Manager, DemoRoles.Receptionist, DemoRoles.Viewer],
+            role => Assert.DoesNotContain(role, attribute.Roles!.Split(',')));
+    }
+
     [Theory]
     [InlineData(null, "")]
     [InlineData("", "")]
