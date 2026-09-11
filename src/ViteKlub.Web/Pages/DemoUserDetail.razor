@@ -1,0 +1,64 @@
+@page "/demo-users/{Id:guid}"
+@attribute [Authorize(Roles = DemoRoles.Administration)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Dettaglio utente demo - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <MudButton Variant="Variant.Text" Href="demo-users" StartIcon="@Icons.Material.Filled.ArrowBack">Torna agli utenti demo</MudButton>
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento dettaglio utente demo" />
+        <MudText role="status" aria-live="polite">Caricamento del dettaglio…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_user is null)
+    {
+        <h1 class="mud-typography mud-typography-h3">Utente non trovato</h1>
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" role="alert">L'utente richiesto non esiste nel dataset demo.</MudAlert>
+    }
+    else
+    {
+        <div><h1 class="mud-typography mud-typography-h3">Dettaglio utente demo</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei soli dati non sensibili.</MudText></div>
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Nome visualizzato</MudText><MudText>@TextOrDash(_user.DisplayName)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Username</MudText><MudText>@TextOrDash(_user.Username)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Identificativo</MudText><MudText>@_user.Id.ToString("D")</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Ruoli assegnati</MudText><MudChip T="string" Variant="Variant.Outlined">@DemoUserDirectory.RoleLabel(_user.Role)</MudChip></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Stato</MudText><MudText>@(_user.IsActive ? "Attivo" : "Disattivato")</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Versione record</MudText><MudText>@_user.Version</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Creato il (UTC)</MudText><MudText>@FormatUtc(_user.CreatedAtUtc)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Aggiornato il (UTC)</MudText><MudText>@FormatUtc(_user.UpdatedAtUtc)</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private DemoUser? _user;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            _user = DemoUserDirectory.FindById((await DatasetStore.LoadAsync()).Dataset.Users, Id);
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare il dettaglio. Ricarica la pagina per riprovare.";
+        }
+        finally { _isLoading = false; }
+    }
+
+    private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+    private static string FormatUtc(DateTimeOffset value) => value.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'");
+}
