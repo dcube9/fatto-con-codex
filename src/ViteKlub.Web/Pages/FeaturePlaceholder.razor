@@ -1,4 +1,3 @@
-@page "/payments"
 @page "/demo-users"
 @page "/demo"
 @attribute [Authorize]
@@ -17,7 +16,6 @@
 
     private string Title => Navigation.ToBaseRelativePath(Navigation.Uri) switch
     {
-        "payments" => "Pagamenti",
         "demo-users" => "Utenti demo",
         "demo" => "Gestione demo",
         _ => "ViteKlub"
