@@ -5,7 +5,7 @@ Blazor WebAssembly standalone su hosting statico.
 
 ## Perimetro
 
-Le aree previste sono dashboard, iscritti, abbonamenti, accessi, pagamenti, utenti demo
+Le aree applicative sono dashboard operativa, iscritti, abbonamenti, accessi, pagamenti, utenti demo
 e gestione demo. Corsi, calendario, istruttori e sale sono esplicitamente esclusi.
 
 ## Vincoli

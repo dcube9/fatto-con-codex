@@ -40,6 +40,18 @@ public sealed class DemoAuthorizationTests
     }
 
     [Fact]
+    public void DashboardRouteRequiresEveryAuthenticatedDemoRole()
+    {
+        AuthorizeAttribute attribute = Assert.Single(typeof(ViteKlub.Web.Pages.Home)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>());
+
+        Assert.Equal(DemoRoles.All, attribute.Roles);
+        Assert.All([DemoRoles.Administrator, DemoRoles.Manager, DemoRoles.Receptionist, DemoRoles.Viewer],
+            role => Assert.Contains(role, attribute.Roles!.Split(',')));
+    }
+
+    [Fact]
     public void UnknownRouteIsNotAuthorized()
     {
         Assert.False(DemoNavigation.IsAuthorized("not-a-route", CreatePrincipal(DemoRoles.Administrator)));
