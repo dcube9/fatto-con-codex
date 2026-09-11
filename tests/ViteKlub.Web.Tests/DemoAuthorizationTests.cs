@@ -59,6 +59,19 @@ public sealed class DemoAuthorizationTests
     }
 
     [Theory]
+    [InlineData(typeof(ViteKlub.Web.Pages.DemoUsers))]
+    [InlineData(typeof(ViteKlub.Web.Pages.DemoUserDetail))]
+    public void DemoUserRoutesRequireAdministrator(Type pageType)
+    {
+        AuthorizeAttribute attribute = Assert.Single(pageType.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true).Cast<AuthorizeAttribute>());
+
+        Assert.Equal(DemoRoles.Administration, attribute.Roles);
+        Assert.Equal(DemoRoles.Administrator, attribute.Roles);
+        Assert.All([DemoRoles.Manager, DemoRoles.Receptionist, DemoRoles.Viewer],
+            role => Assert.DoesNotContain(role, attribute.Roles!.Split(',')));
+    }
+
+    [Theory]
     [InlineData(null, "")]
     [InlineData("", "")]
     [InlineData("/", "")]

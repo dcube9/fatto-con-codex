@@ -1,0 +1,109 @@
+@page "/demo-users"
+@attribute [Authorize(Roles = DemoRoles.Administration)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Utenti demo - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Utenti demo</h1>
+        <MudText Color="Color.Secondary">Consulta gli utenti del dataset dimostrativo in sola lettura.</MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento utenti demo" />
+        <MudText role="status" aria-live="polite">Caricamento degli utenti demo…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_users.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" role="status">Il dataset demo non contiene utenti.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string" Label="Cerca utenti" Value="_search" ValueChanged="SearchChanged"
+                                  Placeholder="Nome visualizzato o username" Immediate="true" Clearable="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="DemoRole?" Label="Ruolo" Value="_role" ValueChanged="RoleChanged">
+                        <MudSelectItem T="DemoRole?" Value="@(null)">Tutti</MudSelectItem>
+                        @foreach (DemoRole value in Enum.GetValues<DemoRole>())
+                        {
+                            <MudSelectItem T="DemoRole?" Value="@value">@DemoUserDirectory.RoleLabel(value)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudButton Variant="Variant.Text" OnClick="ResetFilters">Azzera ricerca e filtro</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudText role="status" aria-live="polite">@ResultCountLabel</MudText>
+        @if (_result.TotalCount == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Nessun utente corrisponde alla ricerca e al ruolo selezionato.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_result.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="Elenco degli utenti demo">
+                <HeaderContent>
+                    <MudTh>Nome visualizzato</MudTh><MudTh>Username</MudTh><MudTh>Ruoli assegnati</MudTh><MudTh>Stato</MudTh><MudTh>Dettaglio</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Nome visualizzato">@TextOrDash(context.DisplayName)</MudTd>
+                    <MudTd DataLabel="Username">@TextOrDash(context.Username)</MudTd>
+                    <MudTd DataLabel="Ruoli assegnati"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@DemoUserDirectory.RoleLabel(context.Role)</MudChip></MudTd>
+                    <MudTd DataLabel="Stato">@(context.IsActive ? "Attivo" : "Disattivato")</MudTd>
+                    <MudTd DataLabel="Dettaglio"><MudButton Variant="Variant.Text" Href="@($"demo-users/{context.Id:D}")" aria-label="Apri il dettaglio dell'utente demo">Visualizza</MudButton></MudTd>
+                </RowTemplate>
+            </MudTable>
+            @if (_result.PageCount > 1)
+            {
+                <MudPagination Count="_result.PageCount" Selected="_page" SelectedChanged="PageChanged" aria-label="Paginazione utenti demo" />
+            }
+        }
+    }
+</MudStack>
+
+@code {
+    private const int PageSize = 10;
+    private IReadOnlyList<DemoUser> _users = [];
+    private DemoUserDirectoryResult _result = new([], 0, 1, PageSize);
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _search;
+    private DemoRole? _role;
+    private int _page = 1;
+
+    private string ResultCountLabel => _result.TotalCount == 1 ? "1 utente trovato" : $"{_result.TotalCount} utenti trovati";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _users = (await DatasetStore.LoadAsync()).Dataset.Users;
+            ApplyQuery();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare gli utenti demo. Ricarica la pagina per riprovare.";
+        }
+        finally { _isLoading = false; }
+    }
+
+    private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+    private void ApplyQuery() => _result = DemoUserDirectory.Query(_users, new(_search, _role, _page, PageSize));
+    private void SearchChanged(string? value) { _search = value; ResetPageAndQuery(); }
+    private void RoleChanged(DemoRole? value) { _role = value; ResetPageAndQuery(); }
+    private void PageChanged(int value) { _page = value; ApplyQuery(); }
+    private void ResetFilters() { _search = null; _role = null; _page = 1; ApplyQuery(); }
+    private void ResetPageAndQuery() { _page = 1; ApplyQuery(); }
+}
