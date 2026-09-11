@@ -1,6 +1,7 @@
 using System.Net;
 using System.Reflection;
 using Microsoft.JSInterop;
+using ViteKlub.Core.Dashboard;
 using ViteKlub.Core.Data;
 using ViteKlub.Web.Storage;
 using Xunit;
@@ -35,6 +36,10 @@ public sealed class BrowserDemoDatasetStoreTests
             ],
             snapshot.CollectionCounts);
         Assert.Equal(SeedJson, jsRuntime.StoredJson);
+
+        DashboardSummary dashboard = DashboardProjection.Create(snapshot.Dataset);
+        Assert.Equal(snapshot.Dataset.Members.Count, dashboard.TotalMembers);
+        Assert.Equal(snapshot.Dataset.ReferenceDate, dashboard.ReferenceDate);
     }
 
     [Fact]

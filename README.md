@@ -4,7 +4,7 @@ Prototipo statico Blazor WebAssembly per la gestione di una palestra.
 
 ## Development status
 
-Il bootstrap della soluzione è in corso. Il perimetro comprende dashboard, iscritti,
+L'applicazione demo comprende una dashboard operativa, iscritti,
 abbonamenti, accessi, pagamenti, utenti demo e gestione demo.
 
 ## Architettura

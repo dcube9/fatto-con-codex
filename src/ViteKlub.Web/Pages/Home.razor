@@ -4,42 +4,164 @@
 
 <PageTitle>Dashboard - ViteKlub</PageTitle>
 
-<MudStack Spacing="3">
-    <div>
-        <h1 class="mud-typography mud-typography-h3">Dashboard</h1>
+<MudStack Spacing="4">
+    <header>
+        <h1 class="mud-typography mud-typography-h3">Dashboard operativa</h1>
         <MudText Typo="Typo.body1" Color="Color.Secondary">
-            Panoramica operativa della palestra ViteKlub.
+            Panoramica della palestra demo alla data di riferimento del dataset.
         </MudText>
-    </div>
+    </header>
 
     @if (_isLoading)
     {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-label="Caricamento dataset" />
-        <MudText role="status">Caricamento dei dati demo…</MudText>
+        <div role="status" aria-live="polite" aria-label="Caricamento della dashboard">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+            <MudText Class="mt-2">Caricamento dei dati della dashboard…</MudText>
+        </div>
     }
     else if (_errorMessage is not null)
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">
             @_errorMessage
         </MudAlert>
     }
-    else if (_snapshot is not null)
+    else if (_summary is not null && _snapshot is not null)
     {
-        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
-            Dataset @_snapshot.Dataset.DatasetVersion caricato: @_snapshot.Dataset.Members.Count iscritti.
-            Persistenza: @StorageModeLabel.
-        </MudAlert>
+        <section aria-labelledby="indicatori-title">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                <MudText Typo="Typo.h4" HtmlTag="h2" id="indicatori-title">Indicatori principali</MudText>
+                <MudText Typo="Typo.body2">Dati al @_summary.ReferenceDate.ToString("dd/MM/yyyy")</MudText>
+            </MudStack>
+            <MudGrid>
+                @foreach (DashboardMetric metric in Metrics)
+                {
+                    <MudItem xs="12" sm="6" md="4" lg="3">
+                        <MudPaper Class="pa-4 dashboard-metric" Outlined="true">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@metric.Icon" Color="@metric.Color" aria-hidden="true" />
+                                <div>
+                                    <MudText Typo="Typo.body2">@metric.Label</MudText>
+                                    <MudText Typo="Typo.h5">@metric.Value</MudText>
+                                </div>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+            <MudStack Row="true" Class="mt-2 dashboard-links" Spacing="1">
+                <MudButton Href="members" Variant="Variant.Text">Apri la directory iscritti</MudButton>
+                <MudButton Href="memberships" Variant="Variant.Text">Apri la directory abbonamenti</MudButton>
+                <MudButton Href="accesses" Variant="Variant.Text">Apri il registro accessi</MudButton>
+                <AuthorizeView Roles="@DemoRoles.Payments">
+                    <MudButton Href="payments" Variant="Variant.Text">Apri la directory pagamenti</MudButton>
+                </AuthorizeView>
+            </MudStack>
+        </section>
 
         <MudGrid>
-        @foreach (var area in DemoEnvironment.FunctionalAreas.Skip(1))
-        {
-            <MudItem xs="12" sm="6" md="4">
-                <MudPaper Class="pa-4" Outlined="true">
-                    <MudText Typo="Typo.h6">@area</MudText>
-                    <MudText Typo="Typo.body2">Funzionalità predisposta per i prossimi incrementi.</MudText>
-                </MudPaper>
+            <MudItem xs="12" lg="6">
+                <section aria-labelledby="abbonamenti-title">
+                    <MudPaper Class="pa-4 dashboard-section" Outlined="true">
+                        <MudText Typo="Typo.h5" HtmlTag="h2" id="abbonamenti-title">Abbonamenti in scadenza</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">Attivi e in scadenza dalla data di riferimento fino ai 30 giorni successivi, estremi inclusi.</MudText>
+                        @if (_summary.ExpiringMembershipItems.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" role="status">Nessun abbonamento in scadenza entro 30 giorni.</MudAlert>
+                        }
+                        else
+                        {
+                            <MudList T="ExpiringMembershipSummary" Dense="true" aria-label="Abbonamenti in scadenza">
+                                @foreach (ExpiringMembershipSummary item in _summary.ExpiringMembershipItems)
+                                {
+                                    <MudListItem T="ExpiringMembershipSummary" Value="@item">
+                                        <MudText><strong>@item.MemberName</strong> — @item.PlanName</MudText>
+                                        <MudText Typo="Typo.body2">Scadenza: @item.ExpiresOn.ToString("dd/MM/yyyy")</MudText>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                        <MudButton Href="memberships" Variant="Variant.Text">Visualizza tutti gli abbonamenti</MudButton>
+                    </MudPaper>
+                </section>
             </MudItem>
-        }
+
+            <MudItem xs="12" lg="6">
+                <section aria-labelledby="certificati-title">
+                    <MudPaper Class="pa-4 dashboard-section" Outlined="true">
+                        <MudText Typo="Typo.h5" HtmlTag="h2" id="certificati-title">Certificati medici da monitorare</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">Certificati scaduti o in scadenza entro 30 giorni.</MudText>
+                        @if (_summary.MedicalCertificateItems.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" role="status">Nessun certificato medico da monitorare.</MudAlert>
+                        }
+                        else
+                        {
+                            <MudList T="MedicalCertificateSummary" Dense="true" aria-label="Certificati medici da monitorare">
+                                @foreach (MedicalCertificateSummary item in _summary.MedicalCertificateItems)
+                                {
+                                    <MudListItem T="MedicalCertificateSummary" Value="@item">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                            <div>
+                                                <MudLink Href="@($"members/{item.MemberId:D}")">@item.MemberName</MudLink>
+                                                <MudText Typo="Typo.body2">Scadenza: @item.ExpiresOn.ToString("dd/MM/yyyy")</MudText>
+                                            </div>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(item.Condition == MedicalCertificateCondition.Expired ? Color.Error : Color.Warning)">
+                                                @(item.Condition == MedicalCertificateCondition.Expired ? "Già scaduto" : "In scadenza")
+                                            </MudChip>
+                                        </MudStack>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                    </MudPaper>
+                </section>
+            </MudItem>
+
+            <MudItem xs="12" lg="8">
+                <section aria-labelledby="accessi-title">
+                    <MudPaper Class="pa-4 dashboard-section" Outlined="true">
+                        <MudText Typo="Typo.h5" HtmlTag="h2" id="accessi-title">Accessi recenti</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">Gli accessi più recenti fino alla data di riferimento. Orari in UTC.</MudText>
+                        @if (_summary.RecentAccessItems.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" role="status">Il dataset non contiene accessi fino alla data di riferimento.</MudAlert>
+                        }
+                        else
+                        {
+                            <MudTable Items="_summary.RecentAccessItems" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="Accessi recenti">
+                                <HeaderContent><MudTh>Data e ora</MudTh><MudTh>Iscritto</MudTh><MudTh>Esito</MudTh></HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Data e ora">@AccessDirectory.FormatOccurredAt(context.OccurredAtUtc)</MudTd>
+                                    <MudTd DataLabel="Iscritto">@context.MemberName</MudTd>
+                                    <MudTd DataLabel="Esito"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@AccessColor(context.Outcome)">@context.OutcomeLabel</MudChip></MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                        <MudButton Href="accesses" Variant="Variant.Text">Visualizza tutti gli accessi</MudButton>
+                    </MudPaper>
+                </section>
+            </MudItem>
+
+            <MudItem xs="12" lg="4">
+                <section aria-labelledby="persistenza-title">
+                    <MudPaper Class="pa-4 dashboard-section" Outlined="true">
+                        <MudText Typo="Typo.h5" HtmlTag="h2" id="persistenza-title">Persistenza demo</MudText>
+                        <MudList T="string" Dense="true">
+                            <MudListItem T="string">Versione dataset: @_snapshot.Dataset.DatasetVersion</MudListItem>
+                            <MudListItem T="string">Modalità: @StorageModeLabel</MudListItem>
+                        </MudList>
+                        @if (_snapshot.StorageMode == DemoStorageMode.InMemory)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" role="status">
+                                Memoria temporanea: le modifiche ai dati non sopravvivranno al reload della pagina.
+                            </MudAlert>
+                        }
+                        <AuthorizeView Roles="@DemoRoles.Administration">
+                            <MudButton Href="demo" Variant="Variant.Text" Class="mt-2">Apri la gestione demo</MudButton>
+                        </AuthorizeView>
+                    </MudPaper>
+                </section>
+            </MudItem>
         </MudGrid>
     }
 </MudStack>
@@ -47,25 +169,55 @@
 @code {
     private bool _isLoading = true;
     private DemoDatasetSnapshot? _snapshot;
+    private DashboardSummary? _summary;
     private string? _errorMessage;
 
     private string StorageModeLabel => _snapshot?.StorageMode == DemoStorageMode.IndexedDb
         ? "IndexedDB"
         : "memoria temporanea";
 
+    private IReadOnlyList<DashboardMetric> Metrics => _summary is null ? [] :
+    [
+        new("Iscritti totali", _summary.TotalMembers.ToString(), Icons.Material.Filled.People, Color.Primary),
+        new("Iscritti attivi", _summary.ActiveMembers.ToString(), Icons.Material.Filled.Person, Color.Success),
+        new("Iscritti sospesi", _summary.SuspendedMembers.ToString(), Icons.Material.Filled.PersonOff, Color.Warning),
+        new("Iscritti archiviati", _summary.ArchivedMembers.ToString(), Icons.Material.Filled.Archive, Color.Default),
+        new("Abbonamenti attivi", _summary.ActiveMemberships.ToString(), Icons.Material.Filled.CardMembership, Color.Success),
+        new("Abbonamenti in scadenza entro 30 giorni", _summary.ExpiringMemberships.ToString(), Icons.Material.Filled.Event, Color.Warning),
+        new("Certificati medici già scaduti", _summary.ExpiredMedicalCertificates.ToString(), Icons.Material.Filled.HealthAndSafety, Color.Error),
+        new("Certificati medici in scadenza entro 30 giorni", _summary.ExpiringMedicalCertificates.ToString(), Icons.Material.Filled.MedicalServices, Color.Warning),
+        new("Accessi registrati nella data di riferimento", _summary.AccessesToday.ToString(), Icons.Material.Filled.Login, Color.Primary),
+        new("Accessi consentiti nella data di riferimento", _summary.GrantedAccessesToday.ToString(), Icons.Material.Filled.CheckCircle, Color.Success),
+        new("Accessi rifiutati nella data di riferimento", _summary.DeniedAccessesToday.ToString(), Icons.Material.Filled.Cancel, Color.Error),
+        new("Pagamenti completati", _summary.CompletedPayments.ToString(), Icons.Material.Filled.Payments, Color.Primary),
+        new("Totale pagamenti completati", _summary.FormattedCompletedPaymentsAmount, Icons.Material.Filled.Euro, Color.Primary),
+    ];
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
             _snapshot = await DatasetStore.LoadAsync();
+            _summary = DashboardProjection.Create(_snapshot.Dataset);
         }
         catch (Exception)
         {
-            _errorMessage = "Non è stato possibile caricare i dati demo. Ricarica la pagina per riprovare.";
+            _snapshot = null;
+            _summary = null;
+            _errorMessage = "Non è stato possibile caricare i dati della dashboard. Ricarica la pagina per riprovare.";
         }
         finally
         {
             _isLoading = false;
         }
     }
+
+    private static Color AccessColor(AccessOutcome outcome) => outcome switch
+    {
+        AccessOutcome.Granted => Color.Success,
+        AccessOutcome.Denied => Color.Error,
+        _ => Color.Default
+    };
+
+    private sealed record DashboardMetric(string Label, string Value, string Icon, Color Color);
 }
