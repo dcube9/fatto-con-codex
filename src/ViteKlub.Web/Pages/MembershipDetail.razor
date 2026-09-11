@@ -1,0 +1,60 @@
+@page "/memberships/{Id:guid}"
+@attribute [Authorize(Roles = DemoRoles.All)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Dettaglio abbonamento - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <MudButton Variant="Variant.Text" Href="memberships" StartIcon="@Icons.Material.Filled.ArrowBack">Torna agli abbonamenti</MudButton>
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento dettaglio abbonamento" />
+        <MudText role="status">Caricamento del dettaglio…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_membership is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" role="alert">L’abbonamento richiesto non esiste nel dataset demo.</MudAlert>
+    }
+    else
+    {
+        <div><h1 class="mud-typography mud-typography-h3">Dettaglio abbonamento</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei dati demo.</MudText></div>
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Numero tessera</MudText><MudText>@_membership.MemberNumber</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Iscritto</MudText><MudText>@_membership.MemberFullName</MudText>@if (_membership.HasMember) { <MudLink Href="@($"members/{_membership.MemberId:D}")">Apri dettaglio iscritto</MudLink> }</MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Piano</MudText><MudText>@_membership.PlanName</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Tipo piano</MudText><MudText>@MembershipDirectory.PlanTypeLabel(_membership.PlanType)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Stato</MudText><MudChip T="string" Variant="Variant.Outlined">@MembershipDirectory.SubscriptionStatusLabel(_membership.Status)</MudChip></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Periodo</MudText><MudText>@FormatDate(_membership.StartsOn) – @FormatDate(_membership.EndsOn)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Ingressi residui</MudText><MudText>@_membership.RemainingEntriesLabel</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Prezzo di acquisto</MudText><MudText>@MembershipDirectory.FormatAmount(_membership.PurchasePrice, _membership.Currency)</MudText></MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private MembershipDirectoryItem? _membership;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            DemoDataset dataset = (await DatasetStore.LoadAsync()).Dataset;
+            _membership = MembershipDirectory.FindById(MembershipDirectory.Project(dataset.Subscriptions, dataset.Members, dataset.MembershipPlans), Id);
+        }
+        catch (Exception) { _errorMessage = "Non è stato possibile caricare il dettaglio. Ricarica la pagina per riprovare."; }
+        finally { _isLoading = false; }
+    }
+
+    private static string FormatDate(DateOnly date) => date.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.GetCultureInfo("it-IT"));
+}

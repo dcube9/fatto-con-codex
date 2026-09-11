@@ -1,0 +1,144 @@
+@page "/memberships"
+@attribute [Authorize(Roles = DemoRoles.All)]
+@inject IDemoDatasetStore DatasetStore
+
+<PageTitle>Abbonamenti - ViteKlub</PageTitle>
+
+<MudStack Spacing="3">
+    <div>
+        <h1 class="mud-typography mud-typography-h3">Abbonamenti</h1>
+        <MudText Color="Color.Secondary">Consulta gli abbonamenti demo, i piani associati e gli iscritti titolari.</MudText>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" aria-label="Caricamento abbonamenti" />
+        <MudText role="status" aria-live="polite">Caricamento degli abbonamenti…</MudText>
+    }
+    else if (_errorMessage is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">@_errorMessage</MudAlert>
+    }
+    else if (_memberships.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Il dataset demo non contiene abbonamenti.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="Cerca abbonamenti" Value="_search" ValueChanged="SearchChanged"
+                                  Placeholder="Tessera, iscritto o piano" Immediate="true" Clearable="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="SubscriptionStatus?" Label="Stato" Value="_status" ValueChanged="StatusChanged">
+                        <MudSelectItem T="SubscriptionStatus?" Value="@(null)">Tutti</MudSelectItem>
+                        @foreach (SubscriptionStatus status in Enum.GetValues<SubscriptionStatus>())
+                        {
+                            <MudSelectItem T="SubscriptionStatus?" Value="@status">@MembershipDirectory.SubscriptionStatusLabel(status)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="MembershipPlanType?" Label="Tipo piano" Value="_planType" ValueChanged="PlanTypeChanged">
+                        <MudSelectItem T="MembershipPlanType?" Value="@(null)">Tutti</MudSelectItem>
+                        <MudSelectItem T="MembershipPlanType?" Value="@MembershipPlanType.TimeBased">A tempo</MudSelectItem>
+                        <MudSelectItem T="MembershipPlanType?" Value="@MembershipPlanType.EntryBased">A ingressi</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudSelect T="MembershipSortField" Label="Ordina per" Value="_sortBy" ValueChanged="SortChanged">
+                        <MudSelectItem Value="MembershipSortField.MemberNumber">Numero tessera</MudSelectItem>
+                        <MudSelectItem Value="MembershipSortField.MemberName">Cognome e nome</MudSelectItem>
+                        <MudSelectItem Value="MembershipSortField.PlanName">Nome piano</MudSelectItem>
+                        <MudSelectItem Value="MembershipSortField.StartsOn">Data di inizio</MudSelectItem>
+                        <MudSelectItem Value="MembershipSortField.EndsOn">Data di fine</MudSelectItem>
+                        <MudSelectItem Value="MembershipSortField.Status">Stato</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@DirectionIcon" OnClick="ToggleDirection" aria-label="@DirectionLabel" />
+                        <MudButton Variant="Variant.Text" OnClick="ResetFilters">Azzera filtri</MudButton>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudText role="status" aria-live="polite">@ResultCountLabel</MudText>
+        @if (_result.TotalCount == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Nessun abbonamento corrisponde alla ricerca e ai filtri selezionati.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_result.Items" Hover="true" Breakpoint="Breakpoint.Md" Elevation="0" aria-label="Elenco abbonamenti">
+                <HeaderContent>
+                    <MudTh>Tessera e iscritto</MudTh><MudTh>Piano</MudTh><MudTh>Stato</MudTh>
+                    <MudTh>Periodo</MudTh><MudTh>Ingressi residui</MudTh><MudTh>Prezzo</MudTh><MudTh>Dettaglio</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Tessera e iscritto">
+                        <MudText Typo="Typo.body2">@context.MemberNumber</MudText>
+                        <MudText Typo="Typo.caption">@context.MemberFullName</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Piano"><MudText>@context.PlanName</MudText><MudText Typo="Typo.caption">@MembershipDirectory.PlanTypeLabel(context.PlanType)</MudText></MudTd>
+                    <MudTd DataLabel="Stato"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@MembershipDirectory.SubscriptionStatusLabel(context.Status)</MudChip></MudTd>
+                    <MudTd DataLabel="Periodo">@FormatDate(context.StartsOn) – @FormatDate(context.EndsOn)</MudTd>
+                    <MudTd DataLabel="Ingressi residui">@context.RemainingEntriesLabel</MudTd>
+                    <MudTd DataLabel="Prezzo">@MembershipDirectory.FormatAmount(context.PurchasePrice, context.Currency)</MudTd>
+                    <MudTd DataLabel="Dettaglio"><MudButton Variant="Variant.Text" Href="@($"memberships/{context.Id:D}")" aria-label="Apri il dettaglio dell’abbonamento">Visualizza</MudButton></MudTd>
+                </RowTemplate>
+            </MudTable>
+            @if (_result.PageCount > 1)
+            {
+                <MudPagination Count="_result.PageCount" Selected="_page" SelectedChanged="PageChanged" aria-label="Paginazione abbonamenti" />
+            }
+        }
+    }
+</MudStack>
+
+@code {
+    private const int PageSize = 10;
+    private IReadOnlyList<MembershipDirectoryItem> _memberships = [];
+    private MembershipDirectoryResult _result = new([], 0, 1, PageSize);
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _search;
+    private SubscriptionStatus? _status;
+    private MembershipPlanType? _planType;
+    private MembershipSortField _sortBy = MembershipSortField.MemberNumber;
+    private MembershipSortDirection _direction = MembershipSortDirection.Ascending;
+    private int _page = 1;
+
+    private string DirectionIcon => _direction == MembershipSortDirection.Ascending ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward;
+    private string DirectionLabel => _direction == MembershipSortDirection.Ascending ? "Ordinamento crescente; passa a decrescente" : "Ordinamento decrescente; passa a crescente";
+    private string ResultCountLabel => _result.TotalCount == 1 ? "1 abbonamento trovato" : $"{_result.TotalCount} abbonamenti trovati";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            DemoDataset dataset = (await DatasetStore.LoadAsync()).Dataset;
+            _memberships = MembershipDirectory.Project(dataset.Subscriptions, dataset.Members, dataset.MembershipPlans);
+            ApplyQuery();
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Non è stato possibile caricare gli abbonamenti. Ricarica la pagina per riprovare.";
+        }
+        finally { _isLoading = false; }
+    }
+
+    private void ApplyQuery() => _result = MembershipDirectory.Query(_memberships, new(_search, _status, _planType, _sortBy, _direction, _page, PageSize));
+    private void SearchChanged(string? value) { _search = value; ResetPageAndQuery(); }
+    private void StatusChanged(SubscriptionStatus? value) { _status = value; ResetPageAndQuery(); }
+    private void PlanTypeChanged(MembershipPlanType? value) { _planType = value; ResetPageAndQuery(); }
+    private void SortChanged(MembershipSortField value) { _sortBy = value; ResetPageAndQuery(); }
+    private void ToggleDirection() { _direction = _direction == MembershipSortDirection.Ascending ? MembershipSortDirection.Descending : MembershipSortDirection.Ascending; ResetPageAndQuery(); }
+    private void PageChanged(int value) { _page = value; ApplyQuery(); }
+    private void ResetFilters() { _search = null; _status = null; _planType = null; _page = 1; ApplyQuery(); }
+    private void ResetPageAndQuery() { _page = 1; ApplyQuery(); }
+    private static string FormatDate(DateOnly date) => date.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.GetCultureInfo("it-IT"));
+}
