@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using System.Numerics;
 using System.Text.RegularExpressions;
 using ViteKlub.Core.Data;
 
@@ -35,18 +36,19 @@ public static partial class MemberManagement
     public static string NextMemberNumber(IEnumerable<Member> members)
     {
         ArgumentNullException.ThrowIfNull(members);
-        HashSet<int> used = members
+        HashSet<BigInteger> used = members
             .Select(member => MemberNumberPattern().Match(member.MemberNumber))
-            .Where(match => match.Success && int.TryParse(match.Groups[1].Value, out _))
-            .Select(match => int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
+            .Where(match => match.Success && BigInteger.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out BigInteger value) && value > BigInteger.Zero)
+            .Select(match => BigInteger.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
             .ToHashSet();
-        int next = 1;
+        BigInteger next = BigInteger.One;
         while (used.Contains(next))
         {
             next++;
         }
 
-        return $"VK-{next:00000}";
+        return $"VK-{next.ToString(System.Globalization.CultureInfo.InvariantCulture).PadLeft(5, '0')}";
     }
 
     public static MemberOperationResult Create(
@@ -58,11 +60,24 @@ public static partial class MemberManagement
         DateTimeOffset occurredAtUtc)
     {
         ArgumentNullException.ThrowIfNull(source);
+        return Create(source, input, NextMemberNumber(source.Members), memberId, auditEventId, actorUserId, occurredAtUtc);
+    }
+
+    public static MemberOperationResult Create(
+        DemoDataset source,
+        MemberInput input,
+        string memberNumber,
+        Guid memberId,
+        Guid auditEventId,
+        Guid actorUserId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(source);
         EnsureIds(source, memberId, auditEventId, actorUserId);
         MemberInput normalized = Normalize(input);
         Validate(normalized, DateOnly.FromDateTime(occurredAtUtc.UtcDateTime), true);
-        string number = NextMemberNumber(source.Members);
-        if (source.Members.Any(member => string.Equals(member.MemberNumber, number, StringComparison.OrdinalIgnoreCase)))
+        if (string.IsNullOrWhiteSpace(memberNumber) ||
+            source.Members.Any(member => string.Equals(member.MemberNumber, memberNumber, StringComparison.OrdinalIgnoreCase)))
         {
             throw Error("MemberNumber", "Il numero tessera è già utilizzato.");
         }
@@ -70,7 +85,7 @@ public static partial class MemberManagement
         var member = new Member
         {
             Id = memberId,
-            MemberNumber = number,
+            MemberNumber = memberNumber,
             FirstName = normalized.FirstName!,
             LastName = normalized.LastName!,
             DateOfBirth = normalized.DateOfBirth,
@@ -226,8 +241,10 @@ public static partial class MemberManagement
         Required(input.Phone, "Phone", "Il telefono è obbligatorio.", MaximumPhoneLength, errors);
         Required(input.Email, "Email", "L’email è obbligatoria.", MaximumEmailLength, errors);
         if (!string.IsNullOrEmpty(input.Email) && !MailAddress.TryCreate(input.Email, out _)) errors["Email"] = ["Inserisci un indirizzo email valido."];
-        if (input.DateOfBirth == default || input.DateOfBirth > operationDate) errors["DateOfBirth"] = ["La data di nascita non può essere successiva alla data operativa."];
-        if (input.JoinedOn == default || input.JoinedOn < input.DateOfBirth) errors["JoinedOn"] = ["La data di iscrizione non può precedere la data di nascita."];
+        if (input.DateOfBirth == default) errors["DateOfBirth"] = ["La data di nascita è obbligatoria."];
+        else if (input.DateOfBirth >= operationDate) errors["DateOfBirth"] = ["La data di nascita deve precedere la data operativa."];
+        if (input.JoinedOn == default) errors["JoinedOn"] = ["La data di iscrizione è obbligatoria."];
+        else if (input.JoinedOn < input.DateOfBirth) errors["JoinedOn"] = ["La data di iscrizione non può precedere la data di nascita."];
         if (creating && !input.PrivacyConsent) errors["PrivacyConsent"] = ["Il consenso privacy è obbligatorio."];
         if (input.EmergencyContact?.Length > MaximumOptionalLength) errors["EmergencyContact"] = ["Il contatto di emergenza è troppo lungo."];
         if (input.Notes?.Length > MaximumOptionalLength) errors["Notes"] = ["Le note sono troppo lunghe."];

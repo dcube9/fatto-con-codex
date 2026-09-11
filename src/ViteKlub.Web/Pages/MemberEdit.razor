@@ -4,6 +4,7 @@
 @inject IDemoDatasetStore DatasetStore
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ViteKlub.Web.Members.MemberCommandFactory CommandFactory
 
 <PageTitle>@(IsNew ? "Nuovo iscritto" : "Modifica iscritto") - ViteKlub</PageTitle>
 
@@ -20,14 +21,20 @@
     {
         <MudAlert Severity="Severity.Warning" role="alert">L’iscritto richiesto non esiste nel dataset demo.</MudAlert>
     }
+    else if (_archived)
+    {
+        <MudAlert Severity="Severity.Warning" role="alert">L’iscritto è archiviato e non può essere modificato.</MudAlert>
+    }
     else
     {
         @if (_errors.Count > 0)
         {
-            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert" aria-live="assertive">
-                <strong>Correggi i dati indicati.</strong>
-                <ul>@foreach (string error in _errors.Values.SelectMany(value => value).Distinct()) { <li>@error</li> }</ul>
-            </MudAlert>
+            <div @ref="_errorSummary" tabindex="-1">
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" role="alert">
+                    <strong>Correggi i dati indicati.</strong>
+                    <ul>@foreach (string error in _errors.Values.SelectMany(value => value).Distinct()) { <li>@error</li> }</ul>
+                </MudAlert>
+            </div>
         }
         @if (_message is not null) { <MudAlert Severity="Severity.Error" role="alert">@_message</MudAlert> }
         <MudPaper Class="pa-4" Outlined="true">
@@ -41,7 +48,11 @@
                 <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_model.MedicalCertificateExpiresOn" Label="Scadenza certificato medico (facoltativa)" /></MudItem>
                 <MudItem xs="12" sm="6"><MudTextField @bind-Value="_model.EmergencyContact" Label="Contatto di emergenza (facoltativo)" Error="@HasError("EmergencyContact")" ErrorText="@Error("EmergencyContact")" /></MudItem>
                 <MudItem xs="12"><MudTextField @bind-Value="_model.Notes" Label="Note (facoltative)" Lines="3" Error="@HasError("Notes")" ErrorText="@Error("Notes")" /></MudItem>
-                <MudItem xs="12"><MudCheckBox @bind-Value="_model.PrivacyConsent" Label="Consenso privacy" Required="@IsNew" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12">
+                    <MudCheckBox @bind-Value="_model.PrivacyConsent" Label="Consenso privacy" Required="@IsNew"
+                                 Color="Color.Primary" aria-describedby="privacy-error" />
+                    @if (HasError("PrivacyConsent")) { <MudText id="privacy-error" Color="Color.Error">@Error("PrivacyConsent")</MudText> }
+                </MudItem>
             </MudGrid>
             <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving" aria-label="Salva iscritto">
                 @(_saving ? "Salvataggio in corso…" : "Salva iscritto")
@@ -54,29 +65,43 @@
 @code {
     [Parameter] public Guid? Id { get; set; }
     private bool IsNew => Id is null;
-    private bool _loading = true, _saving, _notFound;
-    private DemoDataset? _dataset;
+    private bool _loading = true, _saving, _notFound, _archived;
     private int _version;
     private string? _message;
     private Dictionary<string, string[]> _errors = [];
     private FormModel _model = new();
+    private ElementReference _errorSummary;
+    private bool _focusErrors;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusErrors)
+        {
+            _focusErrors = false;
+            await _errorSummary.FocusAsync();
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
+        _notFound = false;
+        _archived = false;
+        _message = null;
         try
         {
-            _dataset = (await DatasetStore.LoadAsync()).Dataset;
+            DemoDataset dataset = (await DatasetStore.LoadAsync()).Dataset;
             if (Id is Guid id)
             {
-                Member? member = _dataset.Members.SingleOrDefault(item => item.Id == id);
-                if (member is null || member.Status == MemberStatus.Archived) { _notFound = true; return; }
+                Member? member = dataset.Members.SingleOrDefault(item => item.Id == id);
+                if (member is null) { _notFound = true; return; }
+                if (member.Status == MemberStatus.Archived) { _archived = true; return; }
                 _version = member.Version;
                 _model = FormModel.From(member);
             }
             else
             {
-                _model.JoinedOn = _dataset.ReferenceDate.ToDateTime(TimeOnly.MinValue);
+                _model.JoinedOn = dataset.ReferenceDate.ToDateTime(TimeOnly.MinValue);
             }
         }
         catch { _message = "Non è stato possibile caricare i dati. Riprova."; }
@@ -85,21 +110,26 @@
 
     private async Task SaveAsync()
     {
-        if (_saving || _dataset is null) return;
+        if (_saving) return;
         _saving = true; _errors = []; _message = null;
         try
         {
             AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             Guid actor = Guid.Parse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
-            DateTimeOffset timestamp = DateTimeOffset.UtcNow;
+            DemoDatasetSnapshot current = await DatasetStore.LoadAsync();
             MemberInput input = _model.ToInput();
             MemberOperationResult operation = IsNew
-                ? MemberManagement.Create(_dataset, input, Guid.NewGuid(), Guid.NewGuid(), actor, timestamp)
-                : MemberManagement.Update(_dataset, Id!.Value, _version, input, Guid.NewGuid(), actor, timestamp);
-            await DatasetStore.SaveAsync(operation.Dataset);
+                ? CommandFactory.Create(current.Dataset, input, actor)
+                : CommandFactory.Update(current.Dataset, Id!.Value, _version, input, actor);
+            await DatasetStore.SaveAsync(operation.Dataset, current.Revision);
             Navigation.NavigateTo($"members/{operation.Member.Id:D}?saved=1");
         }
-        catch (MemberValidationException exception) { _errors = exception.Errors.ToDictionary(item => item.Key, item => item.Value); }
+        catch (MemberValidationException exception)
+        {
+            _errors = exception.Errors.ToDictionary(item => item.Key, item => item.Value);
+            _focusErrors = true;
+        }
+        catch (DemoDatasetConflictException) { _message = "I dati sono cambiati. Ricarica la pagina e riprova."; }
         catch { _message = "Non è stato possibile salvare l’iscritto. I dati correnti non sono stati modificati."; }
         finally { _saving = false; }
     }

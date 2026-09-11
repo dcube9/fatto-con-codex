@@ -12,7 +12,8 @@ statica e non lo modifica durante l'uso o il ripristino.
 
 `IDemoDatasetStore` espone alla UI un `DemoDatasetSnapshot`, che contiene il
 `DemoDataset` validato, i conteggi delle raccolte e la modalità di storage effettivamente
-usata. `BrowserDemoDatasetStore` applica questa sequenza:
+usata. Contiene inoltre una revisione locale opaca, valida soltanto nell'istanza corrente
+dello store. `BrowserDemoDatasetStore` applica questa sequenza:
 
 1. prova a leggere la chiave `current` dal database IndexedDB `viteklub-demo`;
 2. se la chiave contiene un dataset, lo deserializza, lo valida e lo restituisce;
@@ -68,7 +69,11 @@ autenticazione è separato e la sessione amministrativa corrente rimane attiva.
 # Persistenza client-side
 
 `IDemoDatasetStore.SaveAsync` valida l’intero dataset, lo serializza esclusivamente con
-`DemoDatasetJson` e restituisce uno snapshot che dichiara la modalità effettiva. Con
+`DemoDatasetJson` e richiede la revisione dello snapshot su cui il comando è basato. Se
+nel frattempo la stessa istanza ha caricato o salvato uno snapshot più recente, il
+salvataggio viene rifiutato prima della scrittura. La regola vale anche nel fallback in
+memoria e una chiamata priva di una revisione ottenuta da `LoadAsync` non può salvare.
+Con
 IndexedDB disponibile, lo stato corrente non viene sostituito se la scrittura fallisce;
 in fallback viene aggiornata una copia deserializzata mantenuta in memoria. Il round-trip
 impedisce allo store di trattenere l’istanza mutabile ricevuta e la cancellazione viene
@@ -78,3 +83,6 @@ Caricamento e ripristino del seed conservano il comportamento precedente. Il rip
 sostituisce eventuali modifiche locali con il dataset dimostrativo iniziale. In memoria i
 dati non sopravvivono al reload; IndexedDB persiste nello stesso browser. Nessuna delle due
 modalità sincronizza dati con server, altri browser, dispositivi o schede concorrenti.
+La revisione non sopravvive al reload e non rileva modifiche effettuate da un'altra
+scheda dopo l'ultima lettura: è un controllo di consistenza della singola istanza, non un
+meccanismo di sincronizzazione tra contesti browser.

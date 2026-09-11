@@ -115,7 +115,7 @@
 
 @code {
     private const int PageSize = 10;
-    private readonly DateOnly _referenceDate = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly _referenceDate;
     private IReadOnlyList<Member> _members = [];
     private MemberDirectoryResult _result = new([], 0, 1, PageSize);
     private bool _isLoading = true;
@@ -142,6 +142,7 @@
         {
             DemoDatasetSnapshot snapshot = await DatasetStore.LoadAsync();
             _members = snapshot.Dataset.Members;
+            _referenceDate = snapshot.Dataset.ReferenceDate;
             ApplyQuery();
         }
         catch (Exception)

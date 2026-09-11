@@ -40,6 +40,61 @@ public sealed class MemberManagementTests
         Assert.Equal("VK-00001", MemberManagement.NextMemberNumber([]));
     }
 
+    [Fact]
+    public void NumberGenerationIgnoresNonConformingAndHandlesArbitrarilyLargeNumbers()
+    {
+        Member template = Member();
+        Member[] members =
+        [
+            template with { MemberNumber = "VK-999999999999999999999999999999999999999999" },
+            template with { Id = Guid.NewGuid(), MemberNumber = "VK-00001" },
+            template with { Id = Guid.NewGuid(), MemberNumber = "VK--2" },
+            template with { Id = Guid.NewGuid(), MemberNumber = "legacy" }
+        ];
+
+        Assert.Equal("VK-00002", MemberManagement.NextMemberNumber(members));
+    }
+
+    [Fact]
+    public void CreateRejectsAnExplicitDuplicateMemberNumber()
+    {
+        DemoDataset source = Dataset();
+
+        MemberValidationException exception = Assert.Throws<MemberValidationException>(() => MemberManagement.Create(
+            source, Input(), source.Members[0].MemberNumber, Guid.NewGuid(), Guid.NewGuid(), source.Users[0].Id, Timestamp));
+
+        Assert.Contains("MemberNumber", exception.Errors.Keys);
+        Assert.Single(source.Members);
+    }
+
+    [Theory]
+    [InlineData(MemberStatus.Active, MemberStatus.Active, false)]
+    [InlineData(MemberStatus.Active, MemberStatus.Suspended, true)]
+    [InlineData(MemberStatus.Active, MemberStatus.Archived, true)]
+    [InlineData(MemberStatus.Suspended, MemberStatus.Active, true)]
+    [InlineData(MemberStatus.Suspended, MemberStatus.Suspended, false)]
+    [InlineData(MemberStatus.Suspended, MemberStatus.Archived, true)]
+    [InlineData(MemberStatus.Archived, MemberStatus.Active, false)]
+    [InlineData(MemberStatus.Archived, MemberStatus.Suspended, false)]
+    [InlineData(MemberStatus.Archived, MemberStatus.Archived, false)]
+    public void TransitionMatrixIsExplicit(MemberStatus current, MemberStatus target, bool expected) =>
+        Assert.Equal(expected, MemberManagement.CanTransition(current, target));
+
+    [Fact]
+    public void BirthDateMustStrictlyPrecedeTheOperationDateWhileJoiningMayEqualBirth()
+    {
+        DemoDataset source = Dataset();
+        DateOnly today = DateOnly.FromDateTime(Timestamp.UtcDateTime);
+        MemberValidationException invalidBirth = Assert.Throws<MemberValidationException>(() => MemberManagement.Create(
+            source, Input() with { DateOfBirth = today, JoinedOn = today }, Guid.NewGuid(), Guid.NewGuid(), source.Users[0].Id, Timestamp));
+        Assert.Contains("DateOfBirth", invalidBirth.Errors.Keys);
+
+        MemberOperationResult valid = MemberManagement.Create(source,
+            Input() with { DateOfBirth = today.AddDays(-1), JoinedOn = today.AddDays(-1) },
+            Guid.NewGuid(), Guid.NewGuid(), source.Users[0].Id, Timestamp);
+        Assert.Equal(valid.Member.DateOfBirth, valid.Member.JoinedOn);
+    }
+
     [Theory]
     [InlineData("", "Rossi", "ada@example.test", "+39 1", true, "FirstName")]
     [InlineData("Ada", "", "ada@example.test", "+39 1", true, "LastName")]
