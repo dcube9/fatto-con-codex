@@ -1,4 +1,3 @@
-@page "/memberships"
 @page "/accesses"
 @page "/payments"
 @page "/demo-users"
@@ -19,7 +18,6 @@
 
     private string Title => Navigation.ToBaseRelativePath(Navigation.Uri) switch
     {
-        "memberships" => "Abbonamenti",
         "accesses" => "Accessi",
         "payments" => "Pagamenti",
         "demo-users" => "Utenti demo",
