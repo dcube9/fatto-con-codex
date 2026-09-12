@@ -36,6 +36,7 @@ export async function clearDatabase(page) {
 }
 
 export async function readSnapshot(page) {
+  await expect.poll(() => page.evaluate(async () => window.demoStorage?.load())).not.toBeNull();
   return page.evaluate(async () => JSON.parse(await window.demoStorage.load()));
 }
 
