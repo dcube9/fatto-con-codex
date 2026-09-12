@@ -48,7 +48,7 @@ export async function writeSnapshot(page, transform) {
 
 export async function installStorageInterceptor(page) {
   await page.addInitScript(() => {
-    const state = { failSave: false, saves: 0, loads: 0 };
+    const state = { failSave: false, pauseSave: false, saves: 0, loads: 0, release: undefined };
     window.__e2eStorage = state;
     let storage;
     Object.defineProperty(window, 'demoStorage', {
@@ -62,6 +62,7 @@ export async function installStorageInterceptor(page) {
           save: async (...args) => {
             state.saves++;
             if (state.failSave) throw new Error('E2E controlled write failure');
+            if (state.pauseSave) await new Promise(resolve => { state.release = resolve; });
             return save(...args);
           }
         };
@@ -72,6 +73,16 @@ export async function installStorageInterceptor(page) {
 
 export async function failWrites(page, enabled) {
   await page.evaluate(value => { window.__e2eStorage.failSave = value; }, enabled);
+}
+
+export async function pauseWrites(page, enabled) {
+  await page.evaluate(value => {
+    window.__e2eStorage.pauseSave = value;
+    if (!value && window.__e2eStorage.release) {
+      window.__e2eStorage.release();
+      window.__e2eStorage.release = undefined;
+    }
+  }, enabled);
 }
 
 export async function fillMemberForm(page, member) {
