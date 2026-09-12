@@ -13,14 +13,67 @@ public sealed class BrowserDemoDatasetStoreTests
     private static readonly string SeedJson = LoadSeedJson();
 
     [Fact]
+    public async Task SaveRejectsAnObsoleteIndexedDbSnapshotWithoutWriting()
+    {
+        var jsRuntime = new TestJsRuntime(SeedJson);
+        var store = CreateStore(jsRuntime);
+        DemoDatasetSnapshot obsolete = await store.LoadAsync();
+        DemoDatasetSnapshot current = await store.LoadAsync();
+
+        DemoDatasetConflictException exception = await Assert.ThrowsAsync<DemoDatasetConflictException>(() =>
+            store.SaveAsync(obsolete.Dataset with { DatasetVersion = "obsolete" }, obsolete.Revision));
+
+        Assert.Contains("Ricarica", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(0, jsRuntime.SaveAttempts);
+        Assert.Equal(current.Dataset.DatasetVersion, (await store.LoadAsync()).Dataset.DatasetVersion);
+    }
+
+    [Fact]
+    public async Task SaveRejectsAnObsoleteMemorySnapshotWithoutChangingTheFallback()
+    {
+        var store = CreateStore(new TestJsRuntime { IsUnavailable = true });
+        DemoDatasetSnapshot obsolete = await store.LoadAsync();
+        DemoDatasetSnapshot current = await store.LoadAsync();
+
+        await Assert.ThrowsAsync<DemoDatasetConflictException>(() =>
+            store.SaveAsync(obsolete.Dataset with { DatasetVersion = "obsolete" }, obsolete.Revision));
+
+        Assert.Equal(current.Dataset.DatasetVersion, (await store.LoadAsync()).Dataset.DatasetVersion);
+    }
+
+    [Fact]
+    public async Task ConsecutiveSavesRequireAndReturnTheLatestRevision()
+    {
+        var store = CreateStore(new TestJsRuntime(SeedJson));
+        DemoDatasetSnapshot loaded = await store.LoadAsync();
+        DemoDatasetSnapshot first = await store.SaveAsync(
+            loaded.Dataset with { DatasetVersion = "first" }, loaded.Revision);
+        DemoDatasetSnapshot second = await store.SaveAsync(
+            first.Dataset with { DatasetVersion = "second" }, first.Revision);
+
+        Assert.True(first.Revision > loaded.Revision);
+        Assert.True(second.Revision > first.Revision);
+        Assert.Equal("second", second.Dataset.DatasetVersion);
+    }
+
+    [Fact]
+    public async Task SaveBeforeLoadIsRejectedBecauseNoRevisionWasIssued()
+    {
+        var store = CreateStore(new TestJsRuntime(SeedJson));
+        DemoDataset dataset = DemoDatasetJson.Deserialize(SeedJson);
+
+        await Assert.ThrowsAsync<DemoDatasetConflictException>(() => store.SaveAsync(dataset, 0));
+    }
+
+    [Fact]
     public async Task SaveValidatesSerializesAndLoadsUpdatedIndexedDbSnapshot()
     {
         var jsRuntime = new TestJsRuntime(SeedJson);
         var store = CreateStore(jsRuntime);
-        DemoDataset original = (await store.LoadAsync()).Dataset;
-        DemoDataset changed = original with { DatasetVersion = "saved-v2" };
+        DemoDatasetSnapshot original = await store.LoadAsync();
+        DemoDataset changed = original.Dataset with { DatasetVersion = "saved-v2" };
 
-        DemoDatasetSnapshot saved = await store.SaveAsync(changed);
+        DemoDatasetSnapshot saved = await store.SaveAsync(changed, original.Revision);
         DemoDatasetSnapshot loaded = await store.LoadAsync();
 
         Assert.Equal(DemoStorageMode.IndexedDb, saved.StorageMode);
@@ -34,9 +87,9 @@ public sealed class BrowserDemoDatasetStoreTests
     {
         var jsRuntime = new TestJsRuntime { IsUnavailable = true };
         var store = CreateStore(jsRuntime);
-        DemoDataset original = (await store.LoadAsync()).Dataset;
+        DemoDatasetSnapshot original = await store.LoadAsync();
 
-        DemoDatasetSnapshot saved = await store.SaveAsync(original with { DatasetVersion = "memory-v2" });
+        DemoDatasetSnapshot saved = await store.SaveAsync(original.Dataset with { DatasetVersion = "memory-v2" }, original.Revision);
 
         Assert.Equal(DemoStorageMode.InMemory, saved.StorageMode);
         Assert.Equal("memory-v2", (await store.LoadAsync()).Dataset.DatasetVersion);
@@ -48,11 +101,11 @@ public sealed class BrowserDemoDatasetStoreTests
     {
         var jsRuntime = new TestJsRuntime(SeedJson);
         var store = CreateStore(jsRuntime);
-        DemoDataset original = (await store.LoadAsync()).Dataset;
-        await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(original with { SchemaVersion = 999 }));
+        DemoDatasetSnapshot original = await store.LoadAsync();
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(original.Dataset with { SchemaVersion = 999 }, original.Revision));
         Assert.Equal(0, jsRuntime.SaveAttempts);
         using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.SaveAsync(original, cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.SaveAsync(original.Dataset, original.Revision, cancellation.Token));
     }
 
     [Fact]
@@ -60,8 +113,8 @@ public sealed class BrowserDemoDatasetStoreTests
     {
         var jsRuntime = new TestJsRuntime(SeedJson) { SaveFails = true };
         var store = CreateStore(jsRuntime);
-        DemoDataset original = (await store.LoadAsync()).Dataset;
-        await Assert.ThrowsAsync<JSException>(() => store.SaveAsync(original with { DatasetVersion = "not-saved" }));
+        DemoDatasetSnapshot original = await store.LoadAsync();
+        await Assert.ThrowsAsync<JSException>(() => store.SaveAsync(original.Dataset with { DatasetVersion = "not-saved" }, original.Revision));
         Assert.Equal("initial-v1", (await store.LoadAsync()).Dataset.DatasetVersion);
     }
 

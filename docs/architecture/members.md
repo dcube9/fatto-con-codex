@@ -66,6 +66,10 @@ e impedisce di sovrascrivere silenziosamente una versione non più corrente.
 Il numero tessera usa il formato `VK-00000`: viene scelto il più piccolo intero positivo
 non già presente. La strategia è deterministica, indipendente dall’orologio, funziona con
 dataset vuoti e riutilizza il primo intervallo libero senza rinumerare record esistenti.
+I valori preesistenti che non corrispondono a `VK-` seguito soltanto da cifre sono
+conservati ma ignorati nel calcolo; gli interi conformi sono elaborati senza limite a 32
+bit. Prima della creazione il Core controlla comunque il candidato esplicito e rifiuta
+un duplicato, anche senza distinzione tra maiuscole e minuscole.
 
 Le sole transizioni ammesse sono `Active → Suspended`, `Suspended → Active`, `Active →
 Archived` e `Suspended → Archived`. L’archiviazione è logica e irreversibile dalla UI:
@@ -76,7 +80,27 @@ timestamp, senza email, telefono, note o altri dati personali.
 ## Consistenza e limiti
 
 Il salvataggio riguarda sempre l’intero `DemoDataset`; directory, dettaglio e dashboard lo
-rileggono dallo store e la dashboard continua a usare `DashboardProjection`. I comandi si
-disabilitano durante il salvataggio. Un errore mostra un messaggio italiano e conserva lo
-snapshot corrente. I dati sono fittizi, locali al browser e non sincronizzati tra dispositivi
-o schede; non esistono backend né lock remoti.
+rileggono dallo store e la dashboard continua a usare `DashboardProjection`. Ogni snapshot
+porta una revisione opaca dell’istanza scoped dello store: un comando ricarica lo snapshot,
+applica l’operazione alla versione corrente e deve presentare la stessa revisione durante
+il salvataggio. Una revisione superata o una versione dell’iscritto diversa viene rifiutata
+con l’invito a ricaricare, senza scrivere il dataset.
+
+La route di modifica distingue un identificativo inesistente da un iscritto archiviato,
+che resta consultabile ma non è più modificabile. I comandi si disabilitano durante il
+salvataggio. Un errore di persistenza mostra un messaggio italiano non tecnico e conserva
+dataset e dettaglio correnti.
+
+La revisione protegge operazioni concorrenti nella **stessa istanza dello store**, quindi
+nella stessa sessione applicativa. Non coordina schede concorrenti, reload, browser o
+dispositivi differenti; IndexedDB non offre qui sincronizzazione applicativa e non
+esistono backend, lock remoti o cache parallele degli iscritti.
+
+## Strategia di verifica della UI
+
+Il progetto non include un framework di rendering dei componenti Razor e il vincolo di
+non aggiungere dipendenze impedisce di introdurne uno per questa attività. Le regole pure,
+la matrice di autorizzazione, lo storage e `MemberCommandFactory` (incluso l'uso esatto di
+timestamp e identificativi iniettati) restano verificabili automaticamente. Rendering,
+focus, dialogo, navigazione e comportamento responsive richiedono invece una verifica
+manuale nel browser con i quattro ruoli demo e da utente anonimo.

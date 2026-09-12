@@ -114,9 +114,9 @@ public sealed class DemoAuthenticationStateProviderTests
     private sealed class TestDatasetStore(DemoDataset dataset) : IDemoDatasetStore
     {
         public Task<DemoDatasetSnapshot> LoadAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new DemoDatasetSnapshot(dataset, DemoStorageMode.InMemory));
+            Task.FromResult(new DemoDatasetSnapshot(dataset, DemoStorageMode.InMemory, 1));
 
-        public Task<DemoDatasetSnapshot> SaveAsync(DemoDataset value, CancellationToken cancellationToken = default) =>
+        public Task<DemoDatasetSnapshot> SaveAsync(DemoDataset value, long expectedRevision, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<DemoDatasetSnapshot> RestoreInitialDatasetAsync(CancellationToken cancellationToken = default) =>

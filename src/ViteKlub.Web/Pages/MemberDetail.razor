@@ -4,6 +4,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
+@inject ViteKlub.Web.Members.MemberCommandFactory CommandFactory
 
 <PageTitle>Dettaglio iscritto - ViteKlub</PageTitle>
 
@@ -36,10 +37,10 @@
         @if (_feedback is not null) { <MudAlert Severity="Severity.Success" role="status" aria-live="polite">@_feedback</MudAlert> }
         <AuthorizeView Roles="@DemoRoles.MemberManagement">
             <MudStack Row="true" Style="flex-wrap: wrap">
-                @if (_member.Status != MemberStatus.Archived) { <MudButton Href="@($"members/{Id:D}/edit")" Disabled="_saving">Modifica</MudButton> }
-                @if (_member.Status == MemberStatus.Active) { <MudButton OnClick="@(() => ChangeStatusAsync(MemberStatus.Suspended))" Disabled="_saving">Sospendi</MudButton> }
-                @if (_member.Status == MemberStatus.Suspended) { <MudButton OnClick="@(() => ChangeStatusAsync(MemberStatus.Active))" Disabled="_saving">Riattiva</MudButton> }
-                @if (_member.Status is MemberStatus.Active or MemberStatus.Suspended) { <MudButton Color="Color.Error" OnClick="ArchiveAsync" Disabled="_saving">Archivia</MudButton> }
+                @if (_member.Status != MemberStatus.Archived) { <MudButton Href="@($"members/{Id:D}/edit")" Disabled="_saving" aria-label="@($"Modifica {_member.FirstName} {_member.LastName}")">Modifica</MudButton> }
+                @if (_member.Status == MemberStatus.Active) { <MudButton OnClick="@(() => ChangeStatusAsync(MemberStatus.Suspended))" Disabled="_saving" aria-label="@($"Sospendi {_member.FirstName} {_member.LastName}")">Sospendi</MudButton> }
+                @if (_member.Status == MemberStatus.Suspended) { <MudButton OnClick="@(() => ChangeStatusAsync(MemberStatus.Active))" Disabled="_saving" aria-label="@($"Riattiva {_member.FirstName} {_member.LastName}")">Riattiva</MudButton> }
+                @if (_member.Status is MemberStatus.Active or MemberStatus.Suspended) { <MudButton Color="Color.Error" OnClick="ArchiveAsync" Disabled="_saving" aria-label="@($"Archivia {_member.FirstName} {_member.LastName}")">Archivia</MudButton> }
             </MudStack>
         </AuthorizeView>
         @if (_saving) { <MudText role="status" aria-live="polite">Salvataggio in corso…</MudText> }
@@ -59,7 +60,7 @@
     [Parameter]
     public Guid Id { get; set; }
 
-    private readonly DateOnly _referenceDate = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly _referenceDate;
     private Member? _member;
     private bool _isLoading = true;
     private string? _errorMessage;
@@ -86,6 +87,7 @@
         {
             DemoDatasetSnapshot snapshot = await DatasetStore.LoadAsync();
             _dataset = snapshot.Dataset;
+            _referenceDate = snapshot.Dataset.ReferenceDate;
             _member = MemberDirectory.FindById(snapshot.Dataset.Members, Id);
             if (NavigationManager.Uri.Contains("saved=1", StringComparison.Ordinal)) _feedback = "Iscritto salvato correttamente.";
         }
@@ -117,12 +119,15 @@
         {
             AuthenticationState state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             Guid actor = Guid.Parse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
-            MemberOperationResult operation = MemberManagement.ChangeStatus(_dataset, Id, _member.Version, target, Guid.NewGuid(), actor, DateTimeOffset.UtcNow);
-            DemoDatasetSnapshot saved = await DatasetStore.SaveAsync(operation.Dataset);
+            DemoDatasetSnapshot current = await DatasetStore.LoadAsync();
+            MemberOperationResult operation = CommandFactory.ChangeStatus(
+                current.Dataset, Id, _member.Version, target, actor);
+            DemoDatasetSnapshot saved = await DatasetStore.SaveAsync(operation.Dataset, current.Revision);
             _dataset = saved.Dataset; _member = operation.Member;
             _feedback = target switch { MemberStatus.Active => "Iscritto riattivato.", MemberStatus.Suspended => "Iscritto sospeso.", _ => "Iscritto archiviato." };
         }
         catch (MemberValidationException exception) { _errorMessage = exception.Errors.Values.SelectMany(item => item).First(); }
+        catch (DemoDatasetConflictException) { _errorMessage = "I dati sono cambiati. Ricarica la pagina e riprova."; }
         catch { _errorMessage = "Non è stato possibile completare l’operazione. I dati correnti non sono stati modificati."; }
         finally { _saving = false; }
     }

@@ -54,5 +54,6 @@ piccoli. Un identificativo di dettaglio inesistente produce un avviso gestito.
 
 Questa è una consultazione dimostrativa locale. Sono esclusi creazione, rinnovo, modifica,
 sospensione operativa, annullamento, eliminazione, importazione, esportazione, pagamenti e
-qualsiasi CRUD di piani, iscritti, accessi o utenti. Non vengono apportate modifiche al
-seed, all'autenticazione o al deploy.
+qualsiasi CRUD di piani, accessi o utenti e non aggiunge comandi sugli iscritti all'area
+abbonamenti; la gestione iscritti resta disponibile nelle route dedicate. Non vengono
+apportate modifiche al seed, all'autenticazione o al deploy.

@@ -68,6 +68,7 @@ viewport ridotti mantenendo la navigazione da tastiera.
 L'area è dimostrativa, usa esclusivamente dati fittizi ed esegue proiezione e query in
 memoria. Non registra, simula, modifica, annulla operativamente, elimina, importa o
 esporta accessi; non persiste cambiamenti e non applica regole operative d'ingresso o
-decrementi. Sono esclusi anche CRUD di iscritti, abbonamenti, piani, pagamenti e utenti,
+decrementi. Sono esclusi anche comandi sugli iscritti da questa area e CRUD di abbonamenti,
+piani, pagamenti e utenti; la gestione iscritti resta disponibile nelle route dedicate,
 nonché modifiche ad autenticazione, seed e deploy. Non risultano problemi aperti noti
 nello scope della consultazione.
