@@ -9,6 +9,11 @@ const newMember = {
   phone: '+39 320 000 4242', dateOfBirth: '01/01/1990', joinedOn: '01/09/2026',
   emergencyContact: 'Referente fittizio +39 320 000 4343', notes: 'Profilo creato dal test browser.', privacyConsent: true
 };
+const utcDateInput = offsetDays => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`;
+};
 
 test.beforeEach(async ({ page }) => authenticate(page));
 
@@ -175,8 +180,8 @@ for (const [label, maximum, character, message] of textBoundaries) {
 }
 
 for (const scenario of [
-  ['nascita uguale alla data operativa', '09/12/2026', '09/12/2026', 'La data di nascita deve precedere la data operativa.'],
-  ['nascita successiva alla data operativa', '09/13/2026', '09/13/2026', 'La data di nascita deve precedere la data operativa.'],
+  ['nascita uguale alla data operativa', utcDateInput(0), utcDateInput(0), 'La data di nascita deve precedere la data operativa.'],
+  ['nascita successiva alla data operativa', utcDateInput(1), utcDateInput(1), 'La data di nascita deve precedere la data operativa.'],
   ['iscrizione precedente alla nascita', '02/01/1990', '01/01/1990', 'La data di iscrizione non può precedere la data di nascita.']
 ]) {
   test(`date: ${scenario[0]}`, async ({ page }) => {
@@ -191,11 +196,16 @@ for (const scenario of [
 }
 
 test('date: iscrizione uguale alla nascita è accettata', async ({ page }) => {
-  test.fixme(true, 'Il validatore del dataset rifiuta ancora la stessa data ammessa dal comando membro.');
   await page.goto('/members/new');
   await fillMemberForm(page, { ...newMember, dateOfBirth: '06/15/2020', joinedOn: '06/15/2020' });
   await page.getByRole('button', { name: 'Salva iscritto' }).click();
   await expect(page).toHaveURL(/\/members\/[0-9a-f-]+\?saved=1$/);
+  const id = page.url().match(/members\/([0-9a-f-]+)/)[1];
+  const snapshot = await readSnapshot(page);
+  expect(snapshot.members.find(member => member.id === id)).toEqual(expect.objectContaining({
+    dateOfBirth: '2020-06-15',
+    joinedOn: '2020-06-15'
+  }));
 });
 
 for (const [viewportName, viewport] of Object.entries(viewports)) {

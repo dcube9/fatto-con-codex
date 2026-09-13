@@ -49,6 +49,38 @@ public sealed class DemoDatasetTests
     }
 
     [Fact]
+    public void ValidatorAcceptsEnrollmentOnBirthDate()
+    {
+        DemoDataset source = LoadInitialDataset();
+        Member original = source.Members[0];
+        Member boundary = original with { JoinedOn = original.DateOfBirth };
+        DemoDataset dataset = source with { Members = [boundary, .. source.Members.Skip(1)] };
+
+        IReadOnlyList<DatasetValidationError> errors = DemoDatasetValidator.Validate(dataset);
+
+        Assert.DoesNotContain(errors, error => error.Code == "member.dates.invalid"
+            && error.Path == "members[0]");
+        Assert.NotEqual(source.Members[0].JoinedOn, source.Members[0].DateOfBirth);
+    }
+
+    [Fact]
+    public void ValidatorRejectsEnrollmentBeforeBirthDate()
+    {
+        DemoDataset source = LoadInitialDataset();
+        Member original = source.Members[0];
+        Member invalid = original with { JoinedOn = original.DateOfBirth.AddDays(-1) };
+        DemoDataset dataset = source with { Members = [invalid, .. source.Members.Skip(1)] };
+
+        IReadOnlyList<DatasetValidationError> errors = DemoDatasetValidator.Validate(dataset);
+
+        DatasetValidationError error = Assert.Single(errors,
+            error => error.Code == "member.dates.invalid" && error.Path == "members[0]");
+        Assert.Equal("member.dates.invalid", error.Code);
+        Assert.Equal("members[0]", error.Path);
+        Assert.NotEqual(source.Members[0].JoinedOn, invalid.JoinedOn);
+    }
+
+    [Fact]
     public void DeserializerRejectsUnknownProperties()
     {
         const string json = """
