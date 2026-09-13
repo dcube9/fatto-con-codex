@@ -1,13 +1,14 @@
 @page "/accesses"
 @attribute [Authorize(Roles = DemoRoles.All)]
 @inject IDemoDatasetStore DatasetStore
+@inject IInstantFormatter InstantFormatter
 
 <PageTitle>Accessi - ViteKlub</PageTitle>
 
 <MudStack Spacing="3">
     <div>
         <h1 class="mud-typography mud-typography-h3">Accessi</h1>
-        <MudText Color="Color.Secondary">Consulta il registro degli accessi demo. Data e ora sono mostrate in UTC.</MudText>
+        <MudText Color="Color.Secondary">Consulta il registro degli accessi demo. Data e ora sono mostrate nel fuso operativo della palestra.</MudText>
     </div>
 
     @if (_isLoading)
@@ -89,7 +90,7 @@
                     <MudTh>Motivo</MudTh><MudTh>Abbonamento</MudTh><MudTh>Registrato da</MudTh><MudTh>Dettaglio</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="Data e ora">@AccessDirectory.FormatOccurredAt(context.OccurredAtUtc)</MudTd>
+                    <MudTd DataLabel="Data e ora">@InstantFormatter.Format(context.OccurredAtUtc)</MudTd>
                     <MudTd DataLabel="Iscritto"><MudText>@context.MemberNumber</MudText><MudText Typo="Typo.caption">@context.MemberFullName</MudText></MudTd>
                     <MudTd DataLabel="Esito"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@AccessDirectory.OutcomeLabel(context.Outcome)</MudChip></MudTd>
                     <MudTd DataLabel="Origine">@AccessDirectory.SourceLabel(context.Source)</MudTd>

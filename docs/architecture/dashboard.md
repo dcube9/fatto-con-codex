@@ -8,8 +8,7 @@ server o l'orologio del dispositivo.
 
 ## Data di riferimento e indicatori
 
-Ogni regola temporale usa esclusivamente `DemoDataset.ReferenceDate`. Gli intervalli sono
-espressi in giorni UTC e hanno estremi inclusi:
+Le regole sulle date civili usano `DemoDataset.ReferenceDate`. Per gli istanti, la proiezione riceve esplicitamente il fuso operativo e costruisce le due mezzanotti locali, poi le converte in confini UTC dell'intervallo semiaperto `[inizioUtc, fineUtc)`. Non assume 24 ore: i giorni dei passaggi DST durano correttamente 23 o 25 ore:
 
 * un abbonamento è attivo quando ha stato `Active` e la data di riferimento è compresa tra
   `StartsOn` ed `EndsOn`; gli abbonamenti terminati prima di tale data sono esclusi;
@@ -18,8 +17,7 @@ espressi in giorni UTC e hanno estremi inclusi:
   attivi;
 * un certificato è già scaduto se la sua scadenza precede la data di riferimento; è in
   scadenza se termina tra la data di riferimento e il limite di 30 giorni, inclusi;
-* gli accessi del giorno hanno timestamp UTC la cui data coincide con la data di
-  riferimento. `Granted` è consentito e `Denied` è rifiutato; `Cancelled` concorre al
+* gli accessi del giorno appartengono all'intervallo UTC del giorno operativo della palestra. `Granted` è consentito e `Denied` è rifiutato; `Cancelled` concorre al
   numero registrato ma non ai due sotto-conteggi;
 * soltanto i pagamenti con stato `Completed` concorrono al conteggio e alla somma. Il
   totale è presentato in euro con la cultura italiana.
@@ -32,7 +30,7 @@ non valori dimostrativi.
 
 Gli abbonamenti in scadenza sono ordinati per data, nome dell'iscritto e identificativo;
 i certificati per data, nome e identificativo. Gli accessi recenti includono soltanto
-eventi non successivi alla data di riferimento e sono ordinati per timestamp decrescente
+eventi precedenti alla fine esclusiva del giorno operativo e sono ordinati per timestamp decrescente
 e identificativo. Ciascun elenco mostra al massimo cinque elementi. Le etichette degli
 esiti degli accessi riusano `AccessDirectory`.
 

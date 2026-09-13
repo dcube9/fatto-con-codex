@@ -65,6 +65,11 @@ public static class DemoDatasetValidator
             {
                 errors.Add(new("entity.timestamps.invalid", path, "I timestamp dell'entità non sono coerenti."));
             }
+
+            if (entity.CreatedAtUtc.Offset != TimeSpan.Zero || entity.UpdatedAtUtc.Offset != TimeSpan.Zero)
+            {
+                errors.Add(new("entity.timestamps.notUtc", path, "I timestamp dell'entità devono avere offset UTC zero."));
+            }
         }
     }
 
@@ -196,6 +201,7 @@ public static class DemoDatasetValidator
             AddMissingReference(access.MemberId, memberIds, $"{path}.memberId", errors);
             AddMissingReference(access.RecordedByUserId, userIds, $"{path}.recordedByUserId", errors);
             AddOptionalMissingReference(access.SubscriptionId, subscriptionIds, $"{path}.subscriptionId", errors);
+            ValidateUtc(access.OccurredAtUtc, $"{path}.occurredAtUtc", errors);
 
             if (access.Outcome == AccessOutcome.Granted && access.DenialReason != AccessDenialReason.None)
             {
@@ -224,6 +230,7 @@ public static class DemoDatasetValidator
             AddMissingReference(payment.MemberId, memberIds, $"{path}.memberId", errors);
             AddMissingReference(payment.RecordedByUserId, userIds, $"{path}.recordedByUserId", errors);
             AddOptionalMissingReference(payment.SubscriptionId, subscriptionIds, $"{path}.subscriptionId", errors);
+            ValidateUtc(payment.OccurredAtUtc, $"{path}.occurredAtUtc", errors);
 
             if (payment.Amount < 0)
             {
@@ -243,6 +250,7 @@ public static class DemoDatasetValidator
         {
             AuditEvent auditEvent = dataset.AuditEvents[index];
             AddMissingReference(auditEvent.ActorUserId, userIds, $"auditEvents[{index}].actorUserId", errors);
+            ValidateUtc(auditEvent.OccurredAtUtc, $"auditEvents[{index}].occurredAtUtc", errors);
         }
     }
 
@@ -310,6 +318,14 @@ public static class DemoDatasetValidator
         if (!string.Equals(currency, "EUR", StringComparison.Ordinal))
         {
             errors.Add(new("currency.unsupported", path, "La demo supporta esclusivamente la valuta EUR."));
+        }
+    }
+
+    private static void ValidateUtc(DateTimeOffset value, string path, List<DatasetValidationError> errors)
+    {
+        if (value.Offset != TimeSpan.Zero)
+        {
+            errors.Add(new("timestamp.notUtc", path, "Il timestamp deve avere offset UTC zero."));
         }
     }
 }

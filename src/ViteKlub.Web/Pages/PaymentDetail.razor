@@ -1,6 +1,7 @@
 @page "/payments/{Id:guid}"
 @attribute [Authorize(Roles = DemoRoles.Payments)]
 @inject IDemoDatasetStore DatasetStore
+@inject IInstantFormatter InstantFormatter
 
 <PageTitle>Dettaglio pagamento - ViteKlub</PageTitle>
 
@@ -21,10 +22,10 @@
     }
     else
     {
-        <div><h1 class="mud-typography mud-typography-h3">Dettaglio pagamento</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei dati demo. Data e ora sono mostrate in UTC.</MudText></div>
+        <div><h1 class="mud-typography mud-typography-h3">Dettaglio pagamento</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei dati demo. Data e ora sono mostrate nel fuso operativo della palestra.</MudText></div>
         <MudPaper Class="pa-4" Outlined="true">
             <MudGrid>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Data e ora</MudText><MudText>@PaymentDirectory.FormatOccurredAt(_payment.OccurredAtUtc)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Data e ora</MudText><MudText>@InstantFormatter.Format(_payment.OccurredAtUtc)</MudText></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Importo e valuta</MudText><MudText>@_payment.FormattedAmount</MudText></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Metodo</MudText><MudText>@PaymentDirectory.MethodLabel(_payment.Method)</MudText></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Stato</MudText><MudChip T="string" Variant="Variant.Outlined">@PaymentDirectory.StatusLabel(_payment.Status)</MudChip></MudItem>

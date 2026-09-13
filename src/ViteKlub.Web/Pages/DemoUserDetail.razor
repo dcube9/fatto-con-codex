@@ -1,6 +1,7 @@
 @page "/demo-users/{Id:guid}"
 @attribute [Authorize(Roles = DemoRoles.Administration)]
 @inject IDemoDatasetStore DatasetStore
+@inject IInstantFormatter InstantFormatter
 
 <PageTitle>Dettaglio utente demo - ViteKlub</PageTitle>
 
@@ -31,8 +32,8 @@
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Ruoli assegnati</MudText><MudChip T="string" Variant="Variant.Outlined">@DemoUserDirectory.RoleLabel(_user.Role)</MudChip></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Stato</MudText><MudText>@(_user.IsActive ? "Attivo" : "Disattivato")</MudText></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Versione record</MudText><MudText>@_user.Version</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Creato il (UTC)</MudText><MudText>@FormatUtc(_user.CreatedAtUtc)</MudText></MudItem>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Aggiornato il (UTC)</MudText><MudText>@FormatUtc(_user.UpdatedAtUtc)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Creato il</MudText><MudText>@InstantFormatter.Format(_user.CreatedAtUtc)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Aggiornato il</MudText><MudText>@InstantFormatter.Format(_user.UpdatedAtUtc)</MudText></MudItem>
             </MudGrid>
         </MudPaper>
     }
@@ -60,5 +61,4 @@
     }
 
     private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
-    private static string FormatUtc(DateTimeOffset value) => value.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'");
 }

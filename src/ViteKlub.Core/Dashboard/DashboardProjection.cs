@@ -49,12 +49,14 @@ public static class DashboardProjection
     public const int MedicalCertificateListLimit = 5;
     public const int RecentAccessListLimit = 5;
 
-    public static DashboardSummary Create(DemoDataset dataset)
+    public static DashboardSummary Create(DemoDataset dataset, TimeZoneInfo operationalTimeZone)
     {
         ArgumentNullException.ThrowIfNull(dataset);
+        ArgumentNullException.ThrowIfNull(operationalTimeZone);
 
         DateOnly referenceDate = dataset.ReferenceDate;
         DateOnly expirationLimit = referenceDate.AddDays(ExpirationWindowDays);
+        OperationalDay operationalDay = OperationalDay.For(referenceDate, operationalTimeZone);
         Dictionary<Guid, Member> members = dataset.Members
             .GroupBy(member => member.Id).ToDictionary(group => group.Key, group => group.First());
         Dictionary<Guid, MembershipPlan> plans = dataset.MembershipPlans
@@ -85,7 +87,7 @@ public static class DashboardProjection
             .ToArray();
 
         GymAccess[] accessesToday = dataset.Accesses
-            .Where(access => UtcDate(access.OccurredAtUtc) == referenceDate)
+            .Where(access => operationalDay.Contains(access.OccurredAtUtc))
             .ToArray();
         Payment[] completedPayments = dataset.Payments
             .Where(payment => payment.Status == PaymentStatus.Completed)
@@ -122,7 +124,7 @@ public static class DashboardProjection
                 .ToArray(),
             certificates.Take(MedicalCertificateListLimit).ToArray(),
             dataset.Accesses
-                .Where(access => UtcDate(access.OccurredAtUtc) <= referenceDate)
+                .Where(access => access.OccurredAtUtc.ToUniversalTime() < operationalDay.EndUtc)
                 .OrderByDescending(access => access.OccurredAtUtc)
                 .ThenBy(access => access.Id)
                 .Take(RecentAccessListLimit)
@@ -138,9 +140,4 @@ public static class DashboardProjection
 
     private static string FullName(Member member) => $"{member.FirstName} {member.LastName}";
 
-    private static DateOnly UtcDate(DateTimeOffset timestamp)
-    {
-        DateTime utc = timestamp.UtcDateTime;
-        return new DateOnly(utc.Year, utc.Month, utc.Day);
-    }
 }

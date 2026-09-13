@@ -30,6 +30,7 @@ public static class DemoDatasetJson
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
             WriteIndented = true
         };
+        options.Converters.Add(new UtcDateTimeOffsetJsonConverter());
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
         return options;
     }

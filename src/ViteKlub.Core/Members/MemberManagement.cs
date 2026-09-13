@@ -73,6 +73,7 @@ public static partial class MemberManagement
         DateTimeOffset occurredAtUtc)
     {
         ArgumentNullException.ThrowIfNull(source);
+        occurredAtUtc = occurredAtUtc.ToUniversalTime();
         EnsureIds(source, memberId, auditEventId, actorUserId);
         MemberInput normalized = Normalize(input);
         Validate(normalized, DateOnly.FromDateTime(occurredAtUtc.UtcDateTime), true);
@@ -109,6 +110,7 @@ public static partial class MemberManagement
         Guid auditEventId, Guid actorUserId, DateTimeOffset occurredAtUtc)
     {
         ArgumentNullException.ThrowIfNull(source);
+        occurredAtUtc = occurredAtUtc.ToUniversalTime();
         Member current = Find(source, memberId);
         EnsureActorAndAuditId(source, auditEventId, actorUserId);
         if (current.Status == MemberStatus.Archived)
@@ -144,6 +146,7 @@ public static partial class MemberManagement
         DemoDataset source, Guid memberId, int expectedVersion, MemberStatus target,
         Guid auditEventId, Guid actorUserId, DateTimeOffset occurredAtUtc)
     {
+        occurredAtUtc = occurredAtUtc.ToUniversalTime();
         Member current = Find(source, memberId);
         EnsureActorAndAuditId(source, auditEventId, actorUserId);
         if (current.Version != expectedVersion)

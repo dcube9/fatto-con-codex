@@ -166,10 +166,6 @@ public sealed class PaymentDirectoryTests
         Assert.Null(PaymentDirectory.FindById([expected], GuidFrom(999)));
     }
 
-    [Fact]
-    public void FormatsTheInstantDeterministicallyInUtc() =>
-        Assert.Equal("01/09/2026 12:30 UTC", PaymentDirectory.FormatOccurredAt(new(2026, 9, 1, 14, 30, 0, TimeSpan.FromHours(2))));
-
     private static PaymentDirectoryItem[] Items() =>
     [
         Item(1, "VK-001", "Anna", "Bianchi", 25m, PaymentMethod.Card, PaymentStatus.Completed, Timestamp, "RIF-001", "Rebecca Reception (reception.demo)"),

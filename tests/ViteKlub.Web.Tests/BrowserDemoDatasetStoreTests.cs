@@ -143,7 +143,7 @@ public sealed class BrowserDemoDatasetStoreTests
             snapshot.CollectionCounts);
         Assert.Equal(SeedJson, jsRuntime.StoredJson);
 
-        DashboardSummary dashboard = DashboardProjection.Create(snapshot.Dataset);
+        DashboardSummary dashboard = DashboardProjection.Create(snapshot.Dataset, TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome"));
         Assert.Equal(snapshot.Dataset.Members.Count, dashboard.TotalMembers);
         Assert.Equal(snapshot.Dataset.ReferenceDate, dashboard.ReferenceDate);
     }

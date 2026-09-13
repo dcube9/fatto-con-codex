@@ -13,7 +13,7 @@ public sealed class DashboardProjectionTests
     public void CreateCountsMembersByStatusAndHandlesEmptyCollections()
     {
         DemoDataset empty = Dataset();
-        DashboardSummary emptySummary = DashboardProjection.Create(empty);
+        DashboardSummary emptySummary = CreateDashboard(empty);
         Assert.Equal(0, emptySummary.TotalMembers);
         Assert.Empty(emptySummary.ExpiringMembershipItems);
         Assert.Empty(emptySummary.MedicalCertificateItems);
@@ -29,7 +29,7 @@ public sealed class DashboardProjectionTests
             ]
         };
 
-        DashboardSummary summary = DashboardProjection.Create(dataset);
+        DashboardSummary summary = CreateDashboard(dataset);
         Assert.Equal(3, summary.TotalMembers);
         Assert.Equal(1, summary.ActiveMembers);
         Assert.Equal(1, summary.SuspendedMembers);
@@ -55,7 +55,7 @@ public sealed class DashboardProjectionTests
             ]
         };
 
-        DashboardSummary summary = DashboardProjection.Create(dataset);
+        DashboardSummary summary = CreateDashboard(dataset);
 
         Assert.Equal(2, summary.ActiveMemberships);
         Assert.Equal(1, summary.ExpiringMemberships);
@@ -77,7 +77,7 @@ public sealed class DashboardProjectionTests
         ];
         Guid[] originalOrder = members.Select(member => member.Id).ToArray();
 
-        DashboardSummary summary = DashboardProjection.Create(Dataset() with { Members = members });
+        DashboardSummary summary = CreateDashboard(Dataset() with { Members = members });
 
         Assert.Equal(2, summary.ExpiredMedicalCertificates);
         Assert.Equal(4, summary.ExpiringMedicalCertificates);
@@ -85,7 +85,7 @@ public sealed class DashboardProjectionTests
         Assert.Equal(Guid.Parse("00000000-0000-0000-0000-000000000001"), summary.MedicalCertificateItems[0].MemberId);
         Assert.Equal(originalOrder, members.Select(member => member.Id));
 
-        DashboardSummary boundary = DashboardProjection.Create(Dataset() with
+        DashboardSummary boundary = CreateDashboard(Dataset() with
         {
             Members = [Member(Guid.NewGuid(), "Data", "Limite", MemberStatus.Active, ReferenceDate.AddDays(30))]
         });
@@ -94,7 +94,7 @@ public sealed class DashboardProjectionTests
     }
 
     [Fact]
-    public void AccessesUseUtcReferenceDateAndClassifyOutcomes()
+    public void AccessesUseOperationalRomeDayAndClassifyOutcomes()
     {
         Member member = Member(Guid.NewGuid(), "Leo", "Verdi", MemberStatus.Active);
         DemoDataset dataset = Dataset() with
@@ -113,14 +113,14 @@ public sealed class DashboardProjectionTests
             ]
         };
 
-        DashboardSummary summary = DashboardProjection.Create(dataset);
+        DashboardSummary summary = CreateDashboard(dataset);
 
-        Assert.Equal(3, summary.AccessesToday);
-        Assert.Equal(1, summary.GrantedAccessesToday);
+        Assert.Equal(4, summary.AccessesToday);
+        Assert.Equal(2, summary.GrantedAccessesToday);
         Assert.Equal(1, summary.DeniedAccessesToday);
         Assert.Equal(DashboardProjection.RecentAccessListLimit, summary.RecentAccessItems.Count);
         Assert.Equal(AccessOutcome.Cancelled, summary.RecentAccessItems[0].Outcome);
-        Assert.DoesNotContain(summary.RecentAccessItems, item => item.OccurredAtUtc.UtcDateTime.Date > ReferenceDate.ToDateTime(TimeOnly.MinValue).Date);
+        Assert.DoesNotContain(summary.RecentAccessItems, item => item.OccurredAtUtc >= OperationalDay.For(ReferenceDate, TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome")).EndUtc);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class DashboardProjectionTests
             ]
         };
 
-        DashboardSummary summary = DashboardProjection.Create(dataset);
+        DashboardSummary summary = CreateDashboard(dataset);
 
         Assert.Equal(2, summary.CompletedPayments);
         Assert.Equal(12.50m, summary.CompletedPaymentsAmount);
@@ -157,7 +157,7 @@ public sealed class DashboardProjectionTests
             .Reverse().ToList();
         Guid[] originalOrder = subscriptions.Select(subscription => subscription.Id).ToArray();
 
-        DashboardSummary summary = DashboardProjection.Create(Dataset() with
+        DashboardSummary summary = CreateDashboard(Dataset() with
         {
             Members = [member],
             MembershipPlans = [plan],
@@ -251,4 +251,8 @@ public sealed class DashboardProjectionTests
         Status = status,
         RecordedByUserId = Guid.Empty
     };
+
+    private static DashboardSummary CreateDashboard(DemoDataset dataset) =>
+        DashboardProjection.Create(dataset, TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome"));
+
 }
