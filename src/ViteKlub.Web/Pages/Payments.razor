@@ -1,13 +1,14 @@
 @page "/payments"
 @attribute [Authorize(Roles = DemoRoles.Payments)]
 @inject IDemoDatasetStore DatasetStore
+@inject IInstantFormatter InstantFormatter
 
 <PageTitle>Pagamenti - ViteKlub</PageTitle>
 
 <MudStack Spacing="3">
     <div>
         <h1 class="mud-typography mud-typography-h3">Pagamenti</h1>
-        <MudText Color="Color.Secondary">Consulta i pagamenti demo in sola lettura. Data e ora sono mostrate in UTC.</MudText>
+        <MudText Color="Color.Secondary">Consulta i pagamenti demo in sola lettura. Data e ora sono mostrate nel fuso operativo della palestra.</MudText>
     </div>
 
     @if (_isLoading)
@@ -81,7 +82,7 @@
                     <MudTh>Stato</MudTh><MudTh>Riferimento</MudTh><MudTh>Abbonamento</MudTh><MudTh>Registrato da</MudTh><MudTh>Dettaglio</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="Data e ora">@PaymentDirectory.FormatOccurredAt(context.OccurredAtUtc)</MudTd>
+                    <MudTd DataLabel="Data e ora">@InstantFormatter.Format(context.OccurredAtUtc)</MudTd>
                     <MudTd DataLabel="Iscritto"><MudText>@context.MemberNumber</MudText><MudText Typo="Typo.caption">@context.MemberFullName</MudText></MudTd>
                     <MudTd DataLabel="Importo">@context.FormattedAmount</MudTd>
                     <MudTd DataLabel="Metodo">@PaymentDirectory.MethodLabel(context.Method)</MudTd>

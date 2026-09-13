@@ -1,4 +1,3 @@
-using System.Globalization;
 using ViteKlub.Core.Data;
 
 namespace ViteKlub.Core.Accesses;
@@ -152,9 +151,6 @@ public static class AccessDirectory
         _ when !hasSubscription => MissingSubscriptionLabel,
         Guid id => $"Abbonamento {id:D}"
     };
-
-    public static string FormatOccurredAt(DateTimeOffset occurredAt) =>
-        occurredAt.ToUniversalTime().ToString("dd/MM/yyyy HH:mm 'UTC'", CultureInfo.GetCultureInfo("it-IT"));
 
     private static Dictionary<Guid, T> ById<T>(IEnumerable<T> entities) where T : DemoEntity =>
         entities.GroupBy(entity => entity.Id).ToDictionary(group => group.Key, group => group.First());

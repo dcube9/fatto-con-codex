@@ -1,6 +1,8 @@
 @page "/"
 @attribute [Authorize(Roles = DemoRoles.All)]
 @inject IDemoDatasetStore DatasetStore
+@inject IInstantFormatter InstantFormatter
+@inject IOperationalTimeZone OperationalTimeZone
 
 <PageTitle>Dashboard - ViteKlub</PageTitle>
 
@@ -121,7 +123,7 @@
                 <section aria-labelledby="accessi-title">
                     <MudPaper Class="pa-4 dashboard-section" Outlined="true">
                         <MudText Typo="Typo.h5" HtmlTag="h2" id="accessi-title">Accessi recenti</MudText>
-                        <MudText Typo="Typo.body2" Class="mb-3">Gli accessi più recenti fino alla data di riferimento. Orari in UTC.</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">Gli accessi più recenti fino alla data di riferimento. Orari nel fuso operativo della palestra.</MudText>
                         @if (_summary.RecentAccessItems.Count == 0)
                         {
                             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" role="status">Il dataset non contiene accessi fino alla data di riferimento.</MudAlert>
@@ -131,7 +133,7 @@
                             <MudTable Items="_summary.RecentAccessItems" Breakpoint="Breakpoint.Sm" Elevation="0" aria-label="Accessi recenti">
                                 <HeaderContent><MudTh>Data e ora</MudTh><MudTh>Iscritto</MudTh><MudTh>Esito</MudTh></HeaderContent>
                                 <RowTemplate>
-                                    <MudTd DataLabel="Data e ora">@AccessDirectory.FormatOccurredAt(context.OccurredAtUtc)</MudTd>
+                                    <MudTd DataLabel="Data e ora">@InstantFormatter.Format(context.OccurredAtUtc)</MudTd>
                                     <MudTd DataLabel="Iscritto">@context.MemberName</MudTd>
                                     <MudTd DataLabel="Esito"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@AccessColor(context.Outcome)">@context.OutcomeLabel</MudChip></MudTd>
                                 </RowTemplate>
@@ -198,7 +200,7 @@
         try
         {
             _snapshot = await DatasetStore.LoadAsync();
-            _summary = DashboardProjection.Create(_snapshot.Dataset);
+            _summary = DashboardProjection.Create(_snapshot.Dataset, OperationalTimeZone.Value);
         }
         catch (Exception)
         {

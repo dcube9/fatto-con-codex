@@ -76,3 +76,12 @@ controlla almeno:
 Il file contiene 4 utenti, 75 iscritti, 8 piani, 90 abbonamenti, 350 accessi, 150
 pagamenti e 25 eventi di audit. Le dimensioni sono sufficienti per alimentare elenchi,
 filtri e dashboard senza introdurre dati personali reali.
+
+
+## Convenzioni temporali
+
+Gli istanti (`CreatedAtUtc`, `UpdatedAtUtc`, `OccurredAtUtc`) sono normalizzati a offset zero nel dominio e dal converter JSON condiviso. La scrittura usa ISO 8601 con suffisso `Z`; la lettura accetta snapshot precedenti con offset esplicito preservandone l'istante, ma rifiuta timestamp privi di offset. Le date civili (nascita, iscrizione, certificato, abbonamento e riferimento) restano `DateOnly` e non attraversano alcuna conversione UTC.
+
+La UI converte soltanto per presentazione nel fuso operativo centralizzato `Europe/Rome`, mostra l'offset numerico effettivo e gestisce DST. Ordinamenti e confronti restano per istante UTC. I confini del giorno operativo sono le mezzanotti locali convertite in UTC e formano un intervallo semiaperto, anche nei giorni di 23 o 25 ore. Il runtime WebAssembly carica i dati di globalizzazione necessari ai fusi IANA.
+
+Un futuro backend applicherà la stessa regola: trasporto API ISO 8601 UTC, normalizzazione ai confini, storage database come istante UTC e nessuna dipendenza dal fuso del server. Le query giornaliere riceveranno confini UTC calcolati dal fuso della palestra; la conversione visuale resterà nel frontend.

@@ -1,10 +1,11 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ViteKlub.Core.Data;
 using Xunit;
 
 namespace ViteKlub.Core.Tests;
 
-public sealed class DemoDatasetTests
+public sealed partial class DemoDatasetTests
 {
     [Fact]
     public void InitialDatasetIsValidAndHasExpectedSize()
@@ -113,6 +114,52 @@ public sealed class DemoDatasetTests
         Assert.Equal(json, DemoDatasetJson.Serialize(actual));
     }
 
+    [Theory]
+    [InlineData(2, "2026-09-01T12:30:00.0000000Z")]
+    [InlineData(-5, "2026-09-01T19:30:00.0000000Z")]
+    public void SerializerAlwaysWritesUtcWithZ(int sourceOffsetHours, string expected)
+    {
+        DemoDataset source = LoadInitialDataset();
+        DateTimeOffset timestamp = new(2026, 9, 1, 14, 30, 0, TimeSpan.FromHours(sourceOffsetHours));
+        source = source with { Users = [source.Users[0] with { CreatedAtUtc = timestamp }, .. source.Users.Skip(1)] };
+
+        string json = DemoDatasetJson.Serialize(source);
+
+        Assert.Contains($"\"createdAtUtc\": \"{expected}\"", json, StringComparison.Ordinal);
+        Assert.DoesNotMatch("(?:created|updated|occurred)AtUtc\\\": \\\"[^\\\"]*[+-]\\d{2}:\\d{2}", json);
+    }
+
+    [Fact]
+    public void PreviousSnapshotOffsetRoundTripsAsTheSameUtcInstant()
+    {
+        DemoDataset source = LoadInitialDataset();
+        string json = TimestampValue().Replace(DemoDatasetJson.Serialize(source), "$1\"2026-09-01T14:30:00+02:00\"", 1);
+
+        DemoDataset actual = DemoDatasetJson.Deserialize(json);
+
+        Assert.Equal(new DateTimeOffset(2026, 9, 1, 12, 30, 0, TimeSpan.Zero), actual.Users[0].CreatedAtUtc);
+        Assert.Equal(TimeSpan.Zero, actual.Users[0].CreatedAtUtc.Offset);
+    }
+
+    [Fact]
+    public void DeserializerRejectsTimestampWithoutOffset()
+    {
+        string json = DemoDatasetJson.Serialize(LoadInitialDataset());
+        int timestampStart = json.IndexOf("Z\"", StringComparison.Ordinal);
+        json = string.Concat(json.AsSpan(0, timestampStart), json.AsSpan(timestampStart + 1));
+
+        Assert.Throws<JsonException>(() => DemoDatasetJson.Deserialize(json));
+    }
+
+    [Fact]
+    public void ValidatorRejectsInMemoryTimestampWithNonZeroOffset()
+    {
+        DemoDataset source = LoadInitialDataset();
+        source = source with { Users = [source.Users[0] with { UpdatedAtUtc = source.Users[0].UpdatedAtUtc.ToOffset(TimeSpan.FromHours(2)) }, .. source.Users.Skip(1)] };
+
+        Assert.Contains(DemoDatasetValidator.Validate(source), error => error.Code == "entity.timestamps.notUtc");
+    }
+
     private static DemoDataset LoadInitialDataset()
     {
         System.Reflection.Assembly assembly = typeof(DemoDatasetTests).Assembly;
@@ -128,4 +175,8 @@ public sealed class DemoDatasetTests
         using var reader = new StreamReader(stream);
         return DemoDatasetJson.Deserialize(reader.ReadToEnd());
     }
+
+    [GeneratedRegex("(\"createdAtUtc\"\\s*:\\s*)\"[^\"]+\"")]
+    private static partial Regex TimestampValue();
+
 }

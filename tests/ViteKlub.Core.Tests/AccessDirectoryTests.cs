@@ -162,10 +162,6 @@ public sealed class AccessDirectoryTests
         Assert.Null(AccessDirectory.FindById([expected], GuidFrom(999)));
     }
 
-    [Fact]
-    public void FormatsTheInstantDeterministicallyInUtc() =>
-        Assert.Equal("01/09/2026 12:30 UTC", AccessDirectory.FormatOccurredAt(new(2026, 9, 1, 14, 30, 0, TimeSpan.FromHours(2))));
-
     private static AccessDirectoryItem[] Items() =>
     [
         Item(1, "VK-001", "Anna", "Bianchi", AccessOutcome.Granted, AccessSource.FrontDesk, AccessDenialReason.None, Timestamp, "Rebecca Reception (reception.demo)"),

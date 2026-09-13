@@ -1,6 +1,7 @@
 @page "/accesses/{Id:guid}"
 @attribute [Authorize(Roles = DemoRoles.All)]
 @inject IDemoDatasetStore DatasetStore
+@inject IInstantFormatter InstantFormatter
 
 <PageTitle>Dettaglio accesso - ViteKlub</PageTitle>
 
@@ -21,10 +22,10 @@
     }
     else
     {
-        <div><h1 class="mud-typography mud-typography-h3">Dettaglio accesso</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei dati demo. Data e ora sono mostrate in UTC.</MudText></div>
+        <div><h1 class="mud-typography mud-typography-h3">Dettaglio accesso</h1><MudText Color="Color.Secondary">Consultazione in sola lettura dei dati demo. Data e ora sono mostrate nel fuso operativo della palestra.</MudText></div>
         <MudPaper Class="pa-4" Outlined="true">
             <MudGrid>
-                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Data e ora</MudText><MudText>@AccessDirectory.FormatOccurredAt(_access.OccurredAtUtc)</MudText></MudItem>
+                <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Data e ora</MudText><MudText>@InstantFormatter.Format(_access.OccurredAtUtc)</MudText></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Esito</MudText><MudChip T="string" Variant="Variant.Outlined">@AccessDirectory.OutcomeLabel(_access.Outcome)</MudChip></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Numero tessera</MudText><MudText>@_access.MemberNumber</MudText></MudItem>
                 <MudItem xs="12" sm="6"><MudText Typo="Typo.overline">Iscritto</MudText><MudText>@_access.MemberFullName</MudText>@if (_access.HasMember) { <MudLink Href="@($"members/{_access.MemberId:D}")">Apri dettaglio iscritto</MudLink> }</MudItem>

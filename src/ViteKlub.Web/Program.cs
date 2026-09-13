@@ -6,6 +6,7 @@ using ViteKlub.Web;
 using ViteKlub.Web.Authentication;
 using ViteKlub.Web.Members;
 using ViteKlub.Web.Storage;
+using ViteKlub.Web.Time;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -17,6 +18,11 @@ builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.H
 builder.Services.AddScoped<IDemoDatasetStore, BrowserDemoDatasetStore>();
 builder.Services.AddScoped<IMemberOperationValues, SystemMemberOperationValues>();
 builder.Services.AddScoped<MemberCommandFactory>();
+var operationalTimeOptions = new OperationalTimeOptions();
+builder.Configuration.GetSection(OperationalTimeOptions.SectionName).Bind(operationalTimeOptions);
+builder.Services.AddSingleton(operationalTimeOptions);
+builder.Services.AddSingleton<IOperationalTimeZone, OperationalTimeZone>();
+builder.Services.AddSingleton<IInstantFormatter, InstantFormatter>();
 builder.Services.AddScoped<IDemoSessionStore, BrowserDemoSessionStore>();
 builder.Services.AddScoped<DemoAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider =>

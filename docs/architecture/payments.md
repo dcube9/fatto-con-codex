@@ -41,9 +41,7 @@ non composta da tre lettere viene resa come **Valuta non disponibile** senza int
 la pagina. Il riferimento è testo semplice, mai un link: se assente viene mostrato
 **Nessun riferimento**.
 
-`OccurredAtUtc` rimane un `DateTimeOffset` e viene ordinato tramite l'istante UTC. La
-presentazione converte esplicitamente in UTC e usa il formato italiano
-`gg/mm/aaaa HH:mm UTC`; non dipende dal fuso locale della macchina.
+`OccurredAtUtc` rimane un `DateTimeOffset` UTC e viene ordinato tramite l'istante. La presentazione usa il formatter Web centralizzato e il fuso operativo `Europe/Rome`, con cultura italiana e offset numerico applicabile all'istante (ora solare o legale); non usa il fuso del browser o della macchina.
 
 ## Riferimenti mancanti
 

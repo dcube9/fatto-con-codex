@@ -138,9 +138,6 @@ public static class PaymentDirectory
         return validCurrency ? $"{formatted} {normalizedCurrency}" : $"{formatted} {MissingCurrencyLabel}";
     }
 
-    public static string FormatOccurredAt(DateTimeOffset occurredAt) =>
-        occurredAt.ToUniversalTime().ToString("dd/MM/yyyy HH:mm 'UTC'", CultureInfo.GetCultureInfo("it-IT"));
-
     public static string ReferenceLabel(string? reference) =>
         string.IsNullOrWhiteSpace(reference) ? MissingReferenceLabel : reference.Trim();
 

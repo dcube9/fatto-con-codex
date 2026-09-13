@@ -36,10 +36,7 @@ sconosciuto o una combinazione incoerente producono l'esplicito **Motivo del rif
 disponibile**. Il motivo di annullamento non viene esposto perché non è necessario alla
 consultazione richiesta.
 
-La proiezione conserva il `DateTimeOffset` originale. La formattazione converte
-esplicitamente l'istante in UTC e usa il formato italiano `gg/mm/aaaa HH:mm UTC`; sia la
-lista sia il dettaglio dichiarano il fuso mostrato. Ordinamento e test usano l'istante UTC
-e non dipendono dal fuso locale o dall'orologio della macchina.
+La proiezione conserva l'istante `DateTimeOffset` UTC. Il formatter centralizzato Web lo converte nel fuso operativo configurato `Europe/Rome` e mostra data, ora e offset effettivo, per esempio `01/09/2026 14:30 (UTC+02:00)`. Lista e dettaglio sono quindi indipendenti dal fuso del browser, mentre confronti e ordinamenti restano basati sull'istante UTC.
 
 ## Riferimenti mancanti
 
