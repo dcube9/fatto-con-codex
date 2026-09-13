@@ -69,7 +69,7 @@ tecnologie assistive reali. La collisione della revisione in memoria del medesim
 resta coperta dai test .NET: la revisione non è persistita e non è un'API browser
 pilotabile. Browser: Chromium; viewport: 1440×900, 768×1024 e 390×844.
 
-## Registro di validazione del 12 settembre 2026
+## Registro di validazione del 13 settembre 2026
 
 La consolidazione è stata verificata a partire dalla baseline immutabile
 `a468ed8ec8639a5524934ea0b84376b6db051495`, con seed
@@ -80,9 +80,6 @@ worker, progetto `chromium`, retry zero, trace conservato solo al fallimento e s
 al fallimento.
 
 Il comando di accettazione è `npx playwright test --retries=0 --reporter=line`, eseguito
-dalla directory `tests/ViteKlub.E2E`: il run completo con retry zero ha concluso 40 test
-superati, zero falliti e un test ignorato in 16,7 minuti. Il caso ignorato è marcato
-`fixme`: il comando membro ammette l'iscrizione nella stessa data della nascita, mentre il
-validatore dell'intero dataset la rifiuta. La discrepanza è lasciata esplicita perché la
-presente attività non modifica il codice applicativo. I browser diversi da Chromium, gli
+dalla directory `tests/ViteKlub.E2E`: il run completo con retry zero ha concluso 41 test
+superati, zero falliti e zero ignorati in 18,2 minuti. I browser diversi da Chromium, gli
 screen reader reali e un audit WCAG completo non sono stati eseguiti.

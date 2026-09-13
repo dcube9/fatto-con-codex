@@ -122,9 +122,9 @@ public static class DemoDatasetValidator
                 errors.Add(new("member.name.required", $"members[{index}]", "Numero tessera, nome e cognome sono obbligatori."));
             }
 
-            if (member.DateOfBirth >= member.JoinedOn)
+            if (member.JoinedOn < member.DateOfBirth)
             {
-                errors.Add(new("member.dates.invalid", $"members[{index}]", "La data di nascita deve precedere l'iscrizione."));
+                errors.Add(new("member.dates.invalid", $"members[{index}]", "La data di iscrizione non può precedere la data di nascita."));
             }
         }
     }
